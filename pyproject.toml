@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quests"
+version = "0.1.0"
+description = "Quick Uncertainty Estimation via Structural Similarity"
+authors = [{name = "Daniel Schwalbe-Koda", email = "dskoda@llnl.gov"}]
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.8"
+keywords = ["feed", "reader", "tutorial"]
+dependencies = [
+    "matscipy",
+    "ase",
+]
+
+#[project.scripts]
+#quests = "quests:compute"
+
+[tool.setuptools]
+packages = ["quests"]
