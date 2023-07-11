@@ -12,12 +12,15 @@ license = { file = "LICENSE" }
 requires-python = ">=3.8"
 keywords = ["feed", "reader", "tutorial"]
 dependencies = [
+    "numpy",
+    "pandas",
     "matscipy",
     "ase",
+    "click",
 ]
 
-#[project.scripts]
-#quests = "quests:compute"
+[project.scripts]
+quests = "quests.cli.quests:quests"
 
 [tool.setuptools]
 packages = ["quests"]
