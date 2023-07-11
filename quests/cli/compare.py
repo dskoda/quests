@@ -39,8 +39,8 @@ from quests.distance import compare_matrices
     "-o",
     "--output",
     type=str,
-    default="./output.json",
-    help="path to the JSON file that will contain the output (default: output.json)",
+    default="./output.csv",
+    help="path to the csv file that will contain the output (default: output.csv)",
 )
 @click.option(
     "-p",
@@ -95,4 +95,4 @@ def compare(file_1, file_2, k, cutoff, metric, output, nprocs):
         results.append(result)
 
     df = pd.DataFrame(results)
-    df.to_json(output)
+    df.to_csv(output)
