@@ -4,8 +4,9 @@ QUESTS provides model-free uncertainty estimation methods for interatomic potent
 Among the methods, we propose a structural descriptor based on k-nearest neighbors that is:
 
 1. Fast to compute, as it uses only distances between atoms within an environment.
-2. Invertible, as the distances can be used to reconstruct an environment up to an invariant.
+2. Invertible, as the distances can be used to reconstruct an environment up to an isometry.
 3. Interpretable, as the distances correspond to directly to displacements of atoms.
+4. Continuous, thanks to a smooth cutoff
 
 This package also contains metrics to quantify the diversity of a dataset using this descriptor, and tools to interface with other representations and packages.
 
