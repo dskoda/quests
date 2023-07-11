@@ -13,42 +13,34 @@ from quests.distance import compare_matrices
 
 
 @click.command("compare")
-@click.argument(
-    "file_1",
-    type=str,
-    help="First file to be compared",
-)
-@click.argument(
-    "file_2",
-    type=str,
-    help="second file to be compared",
-)
+@click.argument("file_1", required=1)
+@click.argument("file_2", required=1)
 @click.option(
     "-k",
     type=int,
     default=32,
-    help="Number of nearest neighbors",
+    help="Number of nearest neighbors (default: 32)",
 )
 @click.option(
     "-c",
     "--cutoff",
     type=float,
     default=5.0,
-    help="Cutoff (in Å) for considering interactions between atoms",
+    help="Cutoff (in Å) for considering interactions between atoms (default: 5.0)",
 )
 @click.option(
     "-m",
     "--metric",
     type=str,
     default="frobenius",
-    help="Name of the metric to use when comparing the datasets",
+    help="Name of the metric to use when comparing the datasets (default: frobenius)",
 )
 @click.option(
     "-o",
     "--output",
     type=str,
     default="./output.json",
-    help="path to the JSON file that will contain the output",
+    help="path to the JSON file that will contain the output (default: output.json)",
 )
 @click.option(
     "-p",
@@ -58,6 +50,11 @@ from quests.distance import compare_matrices
     help="number of processors to use (default: 1)",
 )
 def compare(file_1, file_2, k, cutoff, metric, output, nprocs):
+    """Compares different files according to the QUESTS descriptor.
+
+        FILE_1: path to first file \n
+        FILE_2: path to second file
+    """
     dset1 = read(file_1, index=":")
     dset2 = read(file_2, index=":")
 
