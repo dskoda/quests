@@ -60,6 +60,7 @@ def compare(file_1, file_2, k, cutoff, metric, output, nprocs):
 
     q = QUESTS(cutoff=cutoff, k=k)
 
+    print("Computing descriptors...")
     q1 = [
         q.get_descriptors(at)
         for at in dset1
@@ -88,11 +89,19 @@ def compare(file_1, file_2, k, cutoff, metric, output, nprocs):
         }
     
     results = []
-    p = mp.Pool(nprocs)
     iterator = itertools.product(range(len(q1)), range(len(q2)))
 
-    for result in p.imap_unordered(worker_fn, iterator, chunksize=1):
-        results.append(result)
+    print("Computing distances...")
+    if nprocs == 1:
+        for ij in iterator:
+            result = worker_fn(ij)
+            results.append(result)
 
+    else:
+        p = mp.Pool(nprocs)
+        for result in p.imap_unordered(worker_fn, iterator, chunksize=1):
+            results.append(result)
+
+    print("Saving results")
     df = pd.DataFrame(results)
     df.to_csv(output)
