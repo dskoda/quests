@@ -1,168 +1,88 @@
+import itertools
+
 import numpy as np
-from scipy.spatial import distance
 from scipy.stats import entropy
-from scipy.stats import epps_singleton_2samp
-from scipy.stats import ks_2samp
 from scipy.stats import wasserstein_distance
-
-
-def kl_divergence(x, y):
-    return entropy(x, y)
 
 
 def js_divergence(x, y):
     m = 0.5 * (x + y)
-    return 0.5 * kl_divergence(x, m) + 0.5 * kl_divergence(y, m)
-
-
-def hellinger_distance(x, y):
-    return np.sqrt(0.5 * np.sum((np.sqrt(x) - np.sqrt(y)) ** 2))
-
-
-def total_variation_distance(x, y):
-    return 0.5 * np.abs(x - y).sum()
-
-
-def ks_test(x, y):
-    return ks_2samp(x, y).statistic
-
-
-def cvm_test(x, y):
-    return epps_singleton_2samp(x, y).statistic
-
-
-METRICS = {
-    "kl": kl_divergence,
-    "js": js_divergence,
-    "hellinger": hellinger_distance,
-    "tv": total_variation_distance,
-    "ks_test": ks_test,
-    "cvm_test": cvm_test,
-}
+    return 0.5 * entropy(x, m) + 0.5 * entropy(y, m)
 
 
 def compare(
-    r1: np.ndarray,
-    d1: np.ndarray,
-    r2: np.ndarray,
-    d2: np.ndarray,
+    x1: np.ndarray,
+    x2: np.ndarray,
+    y1: np.ndarray,
+    y2: np.ndarray,
     metric="emd",
 ):
     metric = metric.lower()
 
-    u1, v1 = 1 / r1, 1 / d1
-    u2, v2 = 1 / r2, 1 / d2
+    if metric == "emd":
+        rdist = wasserstein_distance(x1, y1)
+        ddist = wasserstein_distance(x2, y2)
 
-    if metric in ["emd", "scaled_emd"]:
-        rdist = wasserstein_distance(r1, r2)
-        ddist = wasserstein_distance(d1, d2)
+    elif metric == "chebyshev":
+        rdist = np.linalg.norm(x1 - y1, ord=np.inf)
+        ddist = np.linalg.norm(x2 - y2, ord=np.inf)
 
-    elif metric in ["inv_emd", "inv_scaled_emd"]:
-        rdist = wasserstein_distance(u1, u2)
-        ddist = wasserstein_distance(v1, v2)
+    elif metric == "median":
+        rdist = np.median(np.abs(x1 - y1))
+        ddist = np.median(np.abs(x2 - y2))
 
-    elif metric in ["inv_sq_emd", "inv_sq_scaled_emd"]:
-        rdist = wasserstein_distance(u1**2, u2**2)
-        ddist = wasserstein_distance(v1**2, v2**2)
+    elif metric == "mean":
+        rdist = np.mean(np.abs(x1 - y1))
+        ddist = np.mean(np.abs(x2 - y2))
 
-    elif metric in ["weighted_emd", "weighted_scaled_emd"]:
-        rdist = wasserstein_distance(r1, r2, u1, u2)
-        ddist = wasserstein_distance(d1, d2, v1, v2)
+    elif metric == "frobenius":
+        rdist = np.linalg.norm(x1 - y1)
+        ddist = np.linalg.norm(x2 - y2)
 
-    elif metric in ["weighted_sq_emd", "weighted_sq_scaled_emd"]:
-        rdist = wasserstein_distance(r1, r2, u1**2, u2**2)
-        ddist = wasserstein_distance(d1, d2, v1**2, v2**2)
+    elif metric == "js":
+        rdist = js_divergence(x1, y1)
+        ddist = js_divergence(x2, y2)
 
-    elif metric in ["chebyshev"]:
-        rdist = np.linalg.norm(r1 - r2, ord=np.inf)
-        ddist = np.linalg.norm(d1 - d2, ord=np.inf)
-
-    elif metric in ["median"]:
-        rdist = np.median(np.abs(r1 - r2))
-        ddist = np.median(np.abs(d1 - d2))
-
-    elif metric in ["mean"]:
-        rdist = np.mean(np.abs(r1 - r2))
-        ddist = np.mean(np.abs(d1 - d2))
-
-    elif metric in ["inv_mean"]:
-        rdist = np.mean(np.abs(u1 - u2))
-        ddist = np.mean(np.abs(v1 - v2))
-
-    elif metric in ["inv_chebyshev"]:
-        rdist = np.linalg.norm(u1 - u2, ord=np.inf)
-        ddist = np.linalg.norm(v1 - v2, ord=np.inf)
-
-    elif metric in ["frobenius"]:
-        rdist = np.linalg.norm(r1 - r2)
-        ddist = np.linalg.norm(d1 - d2)
-
-    elif metric == "inv_js":
-        fn = METRICS["js"]
-        rdist = fn(u1, u2)
-        ddist = fn(v1, v2)
-
-    elif metric in METRICS.keys():
-        fn = METRICS[metric]
-        rdist = fn(r1, r2)
-        ddist = fn(d1, d2)
-
-    if "scaled" in metric:
-        return (rdist * len(r1) + ddist * len(d1)) / (len(r1) + len(d1))
+    else:
+        raise ValueError(f"metric {metric} not found")
 
     return rdist + ddist
 
 
-def normalize(_r, _d):
-    """Normalize the descriptors by rescaling all by the first distance."""
-    if len(_r.shape) == 1:
-        rnorm = _r / _r[0]
-        dnorm = _d / _d[0]
-
-    elif len(_r.shape) == 2:
-        rnorm = _r / _r[:, 0].reshape(-1, 1)
-        dnorm = _d / _d[:, 0].reshape(-1, 1)
-
-    return rnorm, dnorm
-
-
-def normalize_distribution(_r, _d):
-    """Normalize the descriptors by making the area under
-    the curve equal to 1.
-    """
-    if len(_r.shape) == 1:
-        rsum = _r.sum()
-        dsum = _d.sum()
-
-    elif len(_r.shape) == 2:
-        rsum = _r.sum(1).reshape(-1, 1)
-        dsum = _d.sum(1).reshape(-1, 1)
-
-    return _r / rsum, _d / dsum
-
-
 def compare_matrices(
-    r1: np.ndarray,
-    d1: np.ndarray,
-    r2: np.ndarray,
-    d2: np.ndarray,
+    x1: np.ndarray,
+    x2: np.ndarray,
+    y1: np.ndarray,
+    y2: np.ndarray,
     metric="emd",
-    norm: bool = False,
 ):
-    results = []
+    metric = metric.lower()
+    M, N = len(x1), len(y1)
 
-    for _r1, _d1 in zip(r1, d1):
-        if norm:
-            _r1, _d1 = normalize(_r1, _d1)
+    if metric in ["emd", "js"]:
+        dist = [
+            compare(x1[i], x2[i], y1[j], y2[j], metric=metric)
+            for i, j in itertools.product(range(M), range(N))
+        ]
+        return np.array(dist).reshape(M, N)
 
-        results_1 = []
-        for _r2, _d2 in zip(r2, d2):
-            if norm:
-                _r2, _d2 = normalize(_r2, _d2)
+    diff1 = x1.reshape(M, np.newaxis, -1) - y1.reshape(N, -1, np.newaxis)
+    diff2 = x2.reshape(M, np.newaxis, -1) - y2.reshape(N, -1, np.newaxis)
 
-            dist = compare(_r1, _d1, _r2, _d2, metric=metric)
-            results_1.append(dist)
+    if metric == "chebyshev":
+        rdist = np.linalg.norm(diff1, ord=np.inf, axis=-1)
+        ddist = np.linalg.norm(diff2, ord=np.inf, axis=-1)
 
-        results.append(results_1)
+    elif metric == "median":
+        rdist = np.median(np.abs(diff1), axis=-1)
+        ddist = np.median(np.abs(diff2), axis=-1)
 
-    return np.array(results)
+    elif metric == "mean":
+        rdist = np.mean(np.abs(diff1), axis=-1)
+        ddist = np.mean(np.abs(diff2), axis=-1)
+
+    elif metric == "frobenius":
+        rdist = np.linalg.norm(diff1, axis=-1)
+        ddist = np.linalg.norm(diff2, axis=-1)
+
+    return rdist + ddist

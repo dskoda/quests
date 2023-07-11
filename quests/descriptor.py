@@ -99,6 +99,8 @@ class QUESTS:
                 as neighbors when computing the neighbor list.
             k (int): number of nearest neighbors to fix the length
                 of the descriptor.
+            weight_fn (callable): function that smooths out the distances
+                to make the descriptor continuous.
         """
         self.cutoff = float(cutoff)
         self.k = k
