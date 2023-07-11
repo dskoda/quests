@@ -126,6 +126,8 @@ class QUESTS:
         """
         i, j, d, D = nbrlist("ijdD", atoms, cutoff=self.cutoff)
 
+        # reformat to get matrices [i, j], where rows are atom i
+        # and columns are nearest neighbor j
         ij, r_ij, D_ij = self._format_array(i, j, d, D)
         ii = np.arange(0, len(ij)).reshape(-1, 1) * np.ones_like(ij)
         x1 = self.weight(r_ij) / r_ij
