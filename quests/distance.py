@@ -66,8 +66,8 @@ def compare_matrices(
         ]
         return np.array(dist).reshape(M, N)
 
-    diff1 = x1.reshape(M, np.newaxis, -1) - y1.reshape(N, -1, np.newaxis)
-    diff2 = x2.reshape(M, np.newaxis, -1) - y2.reshape(N, -1, np.newaxis)
+    diff1 = x1.reshape(M, 1, -1) - y1.reshape(1, N, -1)
+    diff2 = x2.reshape(M, 1, -1) - y2.reshape(1, N, -1)
 
     if metric == "chebyshev":
         rdist = np.linalg.norm(diff1, ord=np.inf, axis=-1)
