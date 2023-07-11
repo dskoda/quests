@@ -17,6 +17,7 @@ dependencies = [
     "matscipy",
     "ase",
     "click",
+    "multiprocess",
 ]
 
 [project.scripts]

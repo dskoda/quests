@@ -99,7 +99,10 @@ class QUESTS:
             ij.append(nbrs)
             vecs.append(vec)
 
-        return np.stack(ij), np.array(r), np.stack(vecs, axis=0)
+        if len(ij) > 1:
+            return np.stack(ij), np.array(r), np.stack(vecs, axis=0)
+
+        return np.array([ij]), np.array(r), np.array([vecs])
 
     def _split_array(self, sorted_array: np.ndarray) -> List[np.ndarray]:
         """Splits a sorted array of ints in different arrays according
