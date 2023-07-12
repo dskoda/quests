@@ -130,6 +130,15 @@ class QUESTS:
 
         return subarrays
 
+    def get_all_descriptors(self, dset: List[Atoms]):
+        x1, x2 = [], []
+        for at in dset:
+            _x1, _x2 = self.get_descriptors(at)
+            x1.append(_x1)
+            x2.append(_x2)
+
+        return np.concatenate(x1, axis=0), np.concatenate(x2, axis=0)
+
 
 def smooth_weight(r, cutoff):
     x = r.clip(max=cutoff) / cutoff
