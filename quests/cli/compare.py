@@ -1,3 +1,5 @@
+import os
+import sys
 import itertools
 import os
 
@@ -55,6 +57,11 @@ def compare(file_1, file_2, k, cutoff, metric, output, nprocs):
         FILE_1: path to first file \n
         FILE_2: path to second file
     """
+    if os.path.exists(output):
+        print(f"File {output} already exists! Exiting...")
+        sys.exit(1)
+
+    print(f"Reading files {file_1} and {file_2}...")
     dset1 = read(file_1, index=":")
     dset2 = read(file_2, index=":")
 
