@@ -1,17 +1,10 @@
 import os
 import sys
-import itertools
-import os
 
 import click
-import multiprocess as mp
-import numpy as np
-import pandas as pd
-from ase import Atoms
 from ase.io import read
-
+from quests.compare import compare_datasets
 from quests.descriptor import QUESTS
-from quests.distance import compare_matrices
 
 
 @click.command("compare")
@@ -34,7 +27,7 @@ from quests.distance import compare_matrices
     "-m",
     "--metric",
     type=str,
-    default="frobenius",
+    default="euclidean",
     help="Name of the metric to use when comparing the datasets (default: frobenius)",
 )
 @click.option(
@@ -67,48 +60,14 @@ def compare(file_1, file_2, k, cutoff, metric, output, nprocs):
 
     q = QUESTS(cutoff=cutoff, k=k)
 
-    print("Computing descriptors...")
-    q1 = [
-        q.get_descriptors(at)
-        for at in dset1
-    ]
-    q2 = [
-        q.get_descriptors(at)
-        for at in dset2
-    ]
-
-    def worker_fn(ij):
-        i, j = ij
-        x1, x2 = q1[i]
-        y1, y2 = q2[j]
-        dm = compare_matrices(x1, x2, y1, y2, metric=metric)
-        return {
-            "dset1": file_1,
-            "dset2": file_2,
-            "index1": i,
-            "index2": j,
-            "min": dm.min(),
-            "max": dm.max(),
-            "mean": dm.mean(),
-            "std": dm.std(),
-            "q1": np.percentile(dm, 25),
-            "q3": np.percentile(dm, 75),
-        }
-    
-    results = []
-    iterator = itertools.product(range(len(q1)), range(len(q2)))
-
-    print("Computing distances...")
-    if nprocs == 1:
-        for ij in iterator:
-            result = worker_fn(ij)
-            results.append(result)
-
-    else:
-        p = mp.Pool(nprocs)
-        for result in p.imap_unordered(worker_fn, iterator, chunksize=1):
-            results.append(result)
+    print("Comparing datasets")
+    df = compare_datasets(
+        dset1,
+        dset2, 
+        q,
+        metric=metric,
+        nprocs=nprocs
+    )
 
     print("Saving results")
-    df = pd.DataFrame(results)
     df.to_csv(output)

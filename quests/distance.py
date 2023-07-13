@@ -1,8 +1,14 @@
 import itertools
+from typing import List
+import multiprocess as mp
 
 import numpy as np
+import pandas as pd
+from ase import Atoms
 from scipy.stats import entropy
 from scipy.stats import wasserstein_distance
+
+from .descriptor import QUESTS
 
 
 def js_divergence(x, y):
@@ -54,7 +60,7 @@ def compare_matrices(
     x2: np.ndarray,
     y1: np.ndarray,
     y2: np.ndarray,
-    metric="emd",
+    metric="euclidean",
 ):
     metric = metric.lower()
     M, N = len(x1), len(y1)
@@ -81,8 +87,65 @@ def compare_matrices(
         rdist = np.mean(np.abs(diff1), axis=-1)
         ddist = np.mean(np.abs(diff2), axis=-1)
 
-    elif metric == "frobenius":
+    elif metric in ["euclidean", "frobenius"]:
         rdist = np.linalg.norm(diff1, axis=-1)
         ddist = np.linalg.norm(diff2, axis=-1)
 
     return rdist + ddist
+
+
+def compare_datasets(
+    dset1: List[Atoms],
+    dset2: List[Atoms],
+    q: QUESTS,
+    metric: str = "euclidean",
+    nprocs: int = 1,
+) -> pd.DataFrame:
+    """Compares different datasets according to the QUESTS descriptor.
+
+    Arguments:
+    ----------
+        dset1 (List[Atoms]): first dataset to analyze
+        dset2 (List[Atoms]): second dataset to analyze
+        q (QUESTS): object that creates descriptors
+        metric (str): name of the metric to use when comparing descriptors
+        nprocs (int): number of processors to use when comparing datasets
+
+    Returns:
+    --------
+        results (pd.DataFrame): dataframe containing statistics of 
+            the comparison.
+    """
+    q1 = [q.get_descriptors(at) for at in dset1]
+    q2 = [q.get_descriptors(at) for at in dset2]
+
+    def worker_fn(ij):
+        i, j = ij
+        x1, x2 = q1[i]
+        y1, y2 = q2[j]
+        dm = compare_matrices(x1, x2, y1, y2, metric=metric)
+        return {
+            "index1": i,
+            "index2": j,
+            "min": dm.min(),
+            "max": dm.max(),
+            "mean": dm.mean(),
+            "std": dm.std(),
+            "q1": np.percentile(dm, 25),
+            "q3": np.percentile(dm, 75),
+        }
+
+    results = []
+    iterator = itertools.product(range(len(q1)), range(len(q2)))
+
+    if nprocs == 1:
+        for ij in iterator:
+            result = worker_fn(ij)
+            results.append(result)
+
+    else:
+        p = mp.Pool(nprocs)
+        for result in p.imap_unordered(worker_fn, iterator, chunksize=1):
+            results.append(result)
+
+    return pd.DataFrame(results)
