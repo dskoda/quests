@@ -1,40 +1,90 @@
 import numpy as np
-from scipy.special import digamma
-from sklearn.neighbors import BallTree
 from pykdtree.kdtree import KDTree
+from scipy.special import logsumexp
 
 
-EULER_CONSTANT = 0.5772156649
-ENTROPY_MIN_CONSTANT = np.log(2) + EULER_CONSTANT
+class EntropyEstimator:
+    def __init__(
+        self,
+        x: np.ndarray,
+        h: float,
+        nbrs: int = 20,
+    ):
+        """Initializes the kernel-based entropy estimator.
 
+        Parameters:
+        -----------
+            x (np.ndarray): reference points to be used for the KDE.
+            h (float): bandwidth of the KDE.
+            nbrs (int): number of nearest-neighbors to use when
+                computing the overlap between points in the distribution.
+                More neighbors increase the accuracy, but also add
+                computational overhead.
+        """
+        self.x = x
+        self.n = len(x)
+        self.h = h
+        self.k = nbrs
+        self.tree = KDTree(x)
 
-def add_noise(x, eps=1e-10):
-    return x + eps * np.random.random_sample(x.shape)
+    def zij(self, x: np.ndarray) -> np.ndarray:
+        """constructs the distance matrices"""
+        dij, _ = self.tree.query(x, k=self.k)
+        return dij / self.h
 
+    def entropy(self, x: np.ndarray) -> float:
+        """Computes the entropy of the points with respect to the
+            initial dataset.
 
-def entropy_knn(x, k=3, base=2, metric="chebyshev"):
-    """
-    https://github.com/gregversteeg/NPEET/tree/master
-    https://journals.aps.org/pre/abstract/10.1103/PhysRevE.69.066138
-    https://journals.aps.org/pre/abstract/10.1103/PhysRevE.76.026209
-    """
-    assert k <= len(x) - 1, "Set k smaller than num. samples - 1"
-    x = np.asarray(x)
-    n_elements, n_features = x.shape
-    x = add_noise(x)
-    tree = BallTree(x, metric=metric)
-    d, i = tree.query(x, k + 1)
-    nn = d[:, k]
-    const = digamma(n_elements) - digamma(k) + n_features * np.log(2)
-    return (const + n_features * np.log(nn).mean()) / np.log(base)
+        Arguments:
+        ----------
+            x (np.ndarray): points where the entropy will be computed.
 
+        Returns:
+        --------
+            entropy (float): total entropy of the system.
+        """
+        logp = self.delta_entropy(x)
+        logn = np.log(self.n)
 
-def entropy_min(x: np.ndarray, eps: float = 1e-10):
-    """
-    http://jimbeck.caltech.edu/summerlectures/references/Entropy%20estimation.pdf
-    """
-    tree = KDTree(x)
-    d, i = tree.query(x, 2)
-    d = add_noise(d[:, 1], eps=eps)
-    n = x.shape[0]
-    return np.log(n * d).mean() + ENTROPY_MIN_CONSTANT
+        return logn + logp.mean()
+
+    def dataset_entropy(self) -> float:
+        """Computes the entropy of the initial dataset.
+
+        Returns:
+        --------
+            entropy (float): total entropy of the system.
+        """
+        return self.entropy(self.x)
+
+    def kernel(self, x: np.ndarray) -> np.ndarray:
+        """Computes the kernel between the given data points and the
+            initial dataset.
+
+        Arguments:
+        ----------
+            x (np.ndarray): points where the entropy will be computed.
+
+        Returns:
+        --------
+            overlap (np.ndarray): total entropy of the system.
+        """
+        logp = -self.delta_entropy(x)
+        return np.exp(logp) / self.n
+
+    def delta_entropy(self, x: np.ndarray) -> np.ndarray:
+        """Computes the pointwise entropy of the points `x` with respect
+            to the initial dataset.
+
+        Arguments:
+        ----------
+            x (np.ndarray): points where the entropy will be computed.
+
+        Returns:
+        --------
+            entropy (np.ndarray): total entropy of the system.
+        """
+        z = self.zij(x)
+        logp = logsumexp(-(z**2) / 2, axis=-1)
+        return -logp
