@@ -26,12 +26,12 @@ class EntropyEstimator:
         self.x = x
         self.n = len(x)
         self.h = h
-        self.k = nbrs
+        self.nbrs = nbrs
         self.tree = KDTree(x)
 
     def get_distances(self, x: np.ndarray) -> np.ndarray:
-        if self.k is not None:
-            dij, _ = self.tree.query(x, k=self.k)
+        if self.nbrs is not None:
+            dij, _ = self.tree.query(x, k=self.nbrs)
             return dij
 
         return batch_distances(x, self.x)
