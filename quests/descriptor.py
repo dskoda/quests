@@ -12,6 +12,7 @@ class QUESTS:
         cutoff: float = 5.0,
         k: int = 8,
         weight_fn: Callable = None,
+        interaction_cutoff: float = None,
     ):
         """Class for generating the sorted distance lists for atomic
             environments using k-nearest neighbors. The class uses
@@ -29,10 +30,11 @@ class QUESTS:
         """
         self.cutoff = float(cutoff)
         self.k = k
-        smooth_cutoff = 0.75 * self.cutoff
+        if interaction_cutoff is None:
+            interaction_cutoff = 0.75 * self.cutoff
 
         if weight_fn is None:
-            self.weight = lambda r: smooth_weight(r, smooth_cutoff)
+            self.weight = lambda r: smooth_weight(r, interaction_cutoff)
 
         elif isinstance(weight_fn, Callable):
             self.weight = weight_fn

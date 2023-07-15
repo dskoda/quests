@@ -7,6 +7,7 @@ import pandas as pd
 from ase import Atoms
 from scipy.stats import entropy
 from scipy.stats import wasserstein_distance
+from scipy.spatial.distance import cdist
 
 from .descriptor import QUESTS
 
@@ -149,3 +150,24 @@ def compare_datasets(
             results.append(result)
 
     return pd.DataFrame(results)
+
+
+def batch_distances(x, y, batch_size=2000):
+    Nx = x.shape[0]
+    Ny = y.shape[0]
+    dm = np.zeros((Nx, Ny))  # initialize distance matrix
+
+    for i in range(0, Nx, batch_size):
+        for j in range(i, Ny, batch_size):
+            # create batch from data
+            imax = min(i + batch_size, Nx)
+            jmax = min(j + batch_size, Ny)
+            batch1 = x[i:imax]
+            batch2 = y[j:jmax]
+
+            distances = cdist(batch1, batch2)
+
+            # store distances in matrix
+            dm[i:imax, j:jmax] = distances
+
+    return dm
