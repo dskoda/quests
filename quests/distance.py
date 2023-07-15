@@ -158,7 +158,7 @@ def batch_distances(x, y, batch_size=2000):
     dm = np.zeros((Nx, Ny))  # initialize distance matrix
 
     for i in range(0, Nx, batch_size):
-        for j in range(i, Ny, batch_size):
+        for j in range(0, Ny, batch_size):
             # create batch from data
             imax = min(i + batch_size, Nx)
             jmax = min(j + batch_size, Ny)
