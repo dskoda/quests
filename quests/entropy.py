@@ -2,6 +2,8 @@ import numpy as np
 from pykdtree.kdtree import KDTree
 from scipy.special import logsumexp
 
+from .distance import batch_distances
+
 
 class EntropyEstimator:
     def __init__(
@@ -27,9 +29,16 @@ class EntropyEstimator:
         self.k = nbrs
         self.tree = KDTree(x)
 
+    def get_distances(self, x: np.ndarray) -> np.ndarray:
+        if self.k is not None:
+            dij, _ = self.tree.query(x, k=self.k)
+            return dij
+
+        return batch_distances(x, self.x)
+
     def zij(self, x: np.ndarray) -> np.ndarray:
         """constructs the distance matrices"""
-        dij, _ = self.tree.query(x, k=self.k)
+        dij = self.get_distances(x)
         return dij / self.h
 
     def entropy(self, x: np.ndarray) -> float:
