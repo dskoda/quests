@@ -41,4 +41,4 @@ class TreeAnnoy(TreeNeighbors):
             _, dij = self.tree.get_nns_by_vector(_x, k, include_distances=True)
             d.append(dij)
 
-        return np.stack(dij)
+        return np.stack(d)

@@ -1,7 +1,7 @@
 import numpy as np
 
 from .base import TreeNeighbors
-from pykdtree import KDTree
+from pykdtree.kdtree import KDTree
 
 
 class TreePyKDTree(TreeNeighbors):
