@@ -19,6 +19,7 @@ dependencies = [
     "click",
     "multiprocess",
     "pykdtree",
+    "annoy",
 ]
 
 [project.scripts]

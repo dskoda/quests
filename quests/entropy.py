@@ -1,4 +1,5 @@
 import numpy as np
+from annoy import AnnoyIndex
 from pykdtree.kdtree import KDTree
 from scipy.special import logsumexp
 
@@ -27,13 +28,39 @@ class EntropyEstimator:
         self.n = len(x)
         self.h = h
         self.nbrs = nbrs
-        self.tree = KDTree(x)
+        self.tree = self._build_tree(x)
+
+    def _build_tree(
+        self,
+        x: np.ndarray,
+        metric: str = "euclidean",
+        n_jobs: int = -1,
+        n_trees: int = 100,
+    ):
+        n_feats = x.shape[1]
+        t = AnnoyIndex(n_feats, metric)
+
+        for i, v in enumerate(x):
+            t.add_item(i, v)
+
+        t.build(n_trees, n_jobs)
+        return t
 
     def get_distances(self, x: np.ndarray) -> np.ndarray:
         if self.nbrs is not None:
-            dij, _ = self.tree.query(x, k=self.nbrs)
-            return dij
+            return self._get_distances_tree(x)
 
+        return self._get_distances_batch(x)
+
+    def _get_distances_tree(self, x: np.ndarray) -> np.ndarray:
+        d = []
+        for _x in x:
+            _, dij = self.tree.get_nns_by_vector(_x, self.nbrs, include_distances=True)
+            d.append(dij)
+
+        return np.stack(dij)
+
+    def _get_distances_batch(self, x: np.ndarray) -> np.ndarray:
         return batch_distances(x, self.x)
 
     def zij(self, x: np.ndarray) -> np.ndarray:
