@@ -141,6 +141,16 @@ class QUESTS:
 
         return np.concatenate(x1, axis=0), np.concatenate(x2, axis=0)
 
+    def x1_iterator(self, i, j, d):
+        for split in self._split_array(i):
+            dist = np.sort(d[split])[:self.k]
+            if len(dist) < self.k:
+                padding = self.k - len(dist)
+                dist = np.concatenate([dist, np.array([np.inf] * padding)])
+
+            x1 = self.weight(dist) / dist
+
+            yield x1
 
 def smooth_weight(r, cutoff):
     x = r.clip(max=cutoff) / cutoff
