@@ -171,3 +171,11 @@ def batch_distances(x, y, batch_size=2000):
             dm[i:imax, j:jmax] = distances
 
     return dm
+
+
+def matmul_distances(x, y):
+    xn = np.linalg.norm(x, axis=-1).reshape(-1, 1)
+    yn = np.linalg.norm(y, axis=-1, keepdims=True).reshape(1, -1)
+    xy = x @ y
+    dm  = xn + yn - 2 * xy
+    return dm

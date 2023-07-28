@@ -14,6 +14,7 @@ class EntropyEstimator:
         h: float,
         nbrs: int = 20,
         tree: TreeNeighbors = None,
+        kernel: str = "epanechnikov",
     ):
         """Initializes the kernel-based entropy estimator.
 
@@ -31,6 +32,16 @@ class EntropyEstimator:
         self.h = h
         self.nbrs = nbrs
         self.tree = tree
+
+        kernel = kernel.lower()
+        if kernel == "epanechnikov":
+            self.kernel = epanechnikov_kernel
+        
+        elif kernel == "gaussian":
+            self.kernel = gaussian_kernel
+
+        else:
+            raise ValueError(f"Kernel {kernel} not supported")
 
     def get_distances(self, x: np.ndarray) -> np.ndarray:
         if self.tree is not None:
@@ -66,6 +77,7 @@ class EntropyEstimator:
 
         return logn + logp.mean()
 
+    @property
     def dataset_entropy(self) -> float:
         """Computes the entropy of the initial dataset.
 
@@ -74,21 +86,6 @@ class EntropyEstimator:
             entropy (float): total entropy of the system.
         """
         return self.entropy(self.x)
-
-    def kernel(self, x: np.ndarray) -> np.ndarray:
-        """Computes the kernel between the given data points and the
-            initial dataset.
-
-        Arguments:
-        ----------
-            x (np.ndarray): points where the entropy will be computed.
-
-        Returns:
-        --------
-            overlap (np.ndarray): total entropy of the system.
-        """
-        logp = -self.delta_entropy(x)
-        return np.exp(logp) / self.n
 
     def delta_entropy(self, x: np.ndarray) -> np.ndarray:
         """Computes the pointwise entropy of the points `x` with respect
@@ -103,5 +100,21 @@ class EntropyEstimator:
             entropy (np.ndarray): total entropy of the system.
         """
         z = self.zij(x)
-        logp = logsumexp(-(z**2) / 2, axis=-1)
+        logp = self.kernel(z)
         return -logp
+
+
+def epanechnikov_kernel(z: np.ndarray):
+    """Computes the Epachenikov kernel for normalized values z,
+        z_i = (x - x_i) / h,
+        where z is a matrix (n, nbrs), with n being the number of
+        points evaluated at once and nbrs the number of neighbors.
+    """
+
+    u = z * z
+    k = 1 - u.clip(max=1)
+    return np.log(k.sum(axis=-1))
+
+
+def gaussian_kernel(z: np.ndarray):
+    return logsumexp(-(z**2) / 2, axis=-1)
