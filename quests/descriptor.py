@@ -5,6 +5,8 @@ import numpy as np
 from ase import Atoms
 from matscipy.neighbours import neighbour_list as nbrlist
 
+from .batch import split_array
+
 
 class QUESTS:
     def __init__(
@@ -75,7 +77,7 @@ class QUESTS:
         return x1, x2
 
     def _format_array(self, i, j, d, D):
-        subarrays = self._split_array(i)
+        subarrays = split_array(i)
 
         r, ij, vecs = [], [], []
         for subarray in subarrays:
@@ -106,32 +108,6 @@ class QUESTS:
 
         return np.array([ij]), np.array(r), np.array([vecs])
 
-    def _split_array(self, sorted_array: np.ndarray) -> List[np.ndarray]:
-        """Splits a sorted array of ints in different arrays according
-        to their number.
-
-        Arguments:
-        ----------
-            sorted_array: array of ints
-
-        Returns:
-        --------
-            subarrays: list of arrays of ints
-        """
-        sorted_indices = np.arange(len(sorted_array))
-        unique_elements, start_indices = np.unique(
-            sorted_array,
-            return_index=True,
-        )
-
-        start_indices = np.append(start_indices, len(sorted_array))
-        subarrays = [
-            sorted_indices[start_indices[i] : start_indices[i + 1]]
-            for i in range(len(unique_elements))
-        ]
-
-        return subarrays
-
     def get_all_descriptors(self, dset: List[Atoms]):
         x1, x2 = [], []
         for at in dset:
@@ -142,7 +118,7 @@ class QUESTS:
         return np.concatenate(x1, axis=0), np.concatenate(x2, axis=0)
 
     def x1_iterator(self, i, j, d):
-        for split in self._split_array(i):
+        for split in split_array(i):
             dist = np.sort(d[split])[:self.k]
             if len(dist) < self.k:
                 padding = self.k - len(dist)
