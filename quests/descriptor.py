@@ -4,6 +4,7 @@ from typing import List
 import numpy as np
 from ase import Atoms
 from matscipy.neighbours import neighbour_list as nbrlist
+from scipy.spatial.distance import cdist
 
 from .batch import split_array
 
@@ -119,7 +120,7 @@ class QUESTS:
 
     def x1_iterator(self, i, j, d):
         for split in split_array(i):
-            dist = np.sort(d[split])[:self.k]
+            dist = np.sort(d[split])[: self.k]
             if len(dist) < self.k:
                 padding = self.k - len(dist)
                 dist = np.concatenate([dist, np.array([np.inf] * padding)])
@@ -127,6 +128,56 @@ class QUESTS:
             x1 = self.weight(dist) / dist
 
             yield x1
+
+    def get_descriptors_parallel(self, atoms: Atoms):
+        """Computes the (r, d) distances for all atoms in the structure.
+
+        Arguments:
+        -----------
+            atoms (ase.Atoms): structure to be analyzed
+
+        Returns:
+        --------
+            x1 (np.ndarray): radial distances for each atomic environment
+            x2 (np.ndarray): propagated radial distances for environments
+        """
+        i, d, D = nbrlist("idD", atoms, cutoff=self.cutoff)
+
+        subarrays = split_array(i)
+
+        x1, x2 = [], []
+        for subarray in subarrays:
+            _x1, _x2 = self.get_subdescriptor(d[subarray], D[subarray])
+            x1.append(_x1)
+            x2.append(_x2)
+
+        x1 = np.stack(x1)
+        x2 = np.stack(x2)
+
+        return x1, x2
+
+    def get_subdescriptor(self, d: np.ndarray, D: np.ndarray):
+        sorter = np.argsort(d)[: self.k]
+        dist = d[sorter]
+        vecs = D[sorter]
+
+        w = self.weight(dist)
+        x1 = w / dist
+
+        dm = cdist(vecs, vecs)
+        x2m = w.reshape(-1, 1) * w.reshape(1, -1) / (dm + 1e-15)
+
+        x2 = np.fliplr(np.sort(x2m, axis=1))[:, 1:].mean(0)
+        #i, j = np.triu_indices_from(x2m, k=1)
+        #x2 = np.sort(x2m[i, j])[::-1][1:self.k + 1]
+
+        if len(x1) < self.k:
+            padding = self.k - len(x1)
+            x1 = np.concatenate([x1, np.array([0] * padding)])
+            x2 = np.concatenate([x2, np.array([0] * padding)])
+
+        return x1, x2
+
 
 def smooth_weight(r, cutoff):
     x = r.clip(max=cutoff) / cutoff
