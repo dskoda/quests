@@ -1,12 +1,19 @@
 from typing import Callable
 from typing import List
 
+import math
+import numba
+import multiprocess as mp
 import numpy as np
 from ase import Atoms
 from matscipy.neighbours import neighbour_list as nbrlist
 from scipy.spatial.distance import cdist
+from scipy.spatial.distance import pdist, squareform
 
+from .batch import chunks
 from .batch import split_array
+from .time import print_log
+from .time import timetrack
 
 
 class QUESTS:
@@ -42,7 +49,13 @@ class QUESTS:
         elif isinstance(weight_fn, Callable):
             self.weight = weight_fn
 
-    def get_descriptors(self, atoms: Atoms):
+    def get_neighborlist(self, atoms: Atoms, quantities: str = "ijD"):
+        return nbrlist(quantities, atoms, cutoff=self.cutoff)
+
+    def get_descriptors_serial(self, atoms: Atoms):
+        return descriptors_serial(atoms, k=self.k, cutoff=self.cutoff, weight=self.weight)
+
+    def get_descriptors_parallel(self, atoms: Atoms, jobs: int = 1):
         """Computes the (r, d) distances for all atoms in the structure.
 
         Arguments:
@@ -54,62 +67,32 @@ class QUESTS:
             x1 (np.ndarray): radial distances for each atomic environment
             x2 (np.ndarray): propagated radial distances for environments
         """
-        i, j, d, D = nbrlist("ijdD", atoms, cutoff=self.cutoff)
+        if jobs == 1:
+            return self.get_descriptors_serial(atoms)
 
-        # reformat to get matrices [i, j], where rows are atom i
-        # and columns are nearest neighbor j
-        ij, r_ij, D_ij = self._format_array(i, j, d, D)
-        ii = np.arange(0, len(ij)).reshape(-1, 1) * np.ones_like(ij)
-        x1 = self.weight(r_ij) / r_ij
+        i, d, D = self.get_neighborlist(atoms, "idD")
 
-        D_il = D_ij.reshape(-1, 1, 3) + D_ij[ij.reshape(-1)]
-        r_il = np.linalg.norm(D_il, axis=-1)
+        subarrays = split_array(i)
+        subds = [(d[subarr], D[subarr]) for subarr in subarrays]
+        subsets = chunks(subds, len(subds) // jobs)
 
-        r_jl = r_ij[ij.reshape(-1)]
+        def worker_fn(subset):
+            return [
+                local_descriptor(d, D, k=self.k, weight=self.weight) for d, D in subset
+            ]
 
-        _x2 = self.weight(r_ij.reshape(-1, 1)) * self.weight(r_il) / r_jl
-        _x2 = np.sort(_x2)[:, ::-1]
+        with mp.Pool(jobs) as p:
+            results = p.map(worker_fn, subsets)
 
-        # scatter add and normalize
-        x2 = np.zeros_like(x1)
-        np.add.at(x2, ii.reshape(-1), _x2)
-        x2 = x2 / self.k
+        x1 = np.stack([_x1 for res in results for _x1, _x2 in res])
+        x2 = np.stack([_x2 for res in results for _x1, _x2 in res])
 
         return x1, x2
 
-    def _format_array(self, i, j, d, D):
-        subarrays = split_array(i)
+    def get_all_descriptors(self, dset: List[Atoms], jobs: int = 1):
+        if jobs > 1:
+            return self.get_all_descriptors_parallel(dset, jobs)
 
-        r, ij, vecs = [], [], []
-        for subarray in subarrays:
-            n = i[subarray][0]
-            dist = d[subarray]
-            nbrs = j[subarray]
-            vec = D[subarray]
-            sorter = np.argsort(dist)[: self.k]
-
-            # padding
-            if len(dist) < self.k:
-                padding = self.k - len(dist)
-                dist = np.concatenate([dist[sorter], np.array([np.inf] * padding)])
-                nbrs = np.concatenate([nbrs[sorter], np.array([n] * padding)])
-                vec = np.concatenate([vec[sorter], np.array([[np.inf] * 3] * padding)])
-
-            else:
-                dist = dist[sorter]
-                nbrs = nbrs[sorter]
-                vec = vec[sorter]
-
-            r.append(dist)
-            ij.append(nbrs)
-            vecs.append(vec)
-
-        if len(ij) > 1:
-            return np.stack(ij), np.array(r), np.stack(vecs, axis=0)
-
-        return np.array([ij]), np.array(r), np.array([vecs])
-
-    def get_all_descriptors(self, dset: List[Atoms]):
         x1, x2 = [], []
         for at in dset:
             _x1, _x2 = self.get_descriptors(at)
@@ -118,67 +101,63 @@ class QUESTS:
 
         return np.concatenate(x1, axis=0), np.concatenate(x2, axis=0)
 
-    def x1_iterator(self, i, j, d):
-        for split in split_array(i):
-            dist = np.sort(d[split])[: self.k]
-            if len(dist) < self.k:
-                padding = self.k - len(dist)
-                dist = np.concatenate([dist, np.array([np.inf] * padding)])
+    def get_all_descriptors_parallel(self, dset: List[Atoms], jobs: int = 1):
+        def worker_fn(atoms):
+            return descriptors_serial(atoms, k=self.k, cutoff=self.cutoff, weight=self.weight)
 
-            x1 = self.weight(dist) / dist
+        with mp.Pool(jobs) as p:
+            results = p.map(worker_fn, dset)
 
-            yield x1
-
-    def get_descriptors_parallel(self, atoms: Atoms):
-        """Computes the (r, d) distances for all atoms in the structure.
-
-        Arguments:
-        -----------
-            atoms (ase.Atoms): structure to be analyzed
-
-        Returns:
-        --------
-            x1 (np.ndarray): radial distances for each atomic environment
-            x2 (np.ndarray): propagated radial distances for environments
-        """
-        i, d, D = nbrlist("idD", atoms, cutoff=self.cutoff)
-
-        subarrays = split_array(i)
-
-        x1, x2 = [], []
-        for subarray in subarrays:
-            _x1, _x2 = self.get_subdescriptor(d[subarray], D[subarray])
-            x1.append(_x1)
-            x2.append(_x2)
-
-        x1 = np.stack(x1)
-        x2 = np.stack(x2)
-
-        return x1, x2
-
-    def get_subdescriptor(self, d: np.ndarray, D: np.ndarray):
-        sorter = np.argsort(d)[: self.k]
-        dist = d[sorter]
-        vecs = D[sorter]
-
-        w = self.weight(dist)
-        x1 = w / dist
-
-        dm = cdist(vecs, vecs)
-        x2m = w.reshape(-1, 1) * w.reshape(1, -1) / (dm + 1e-15)
-
-        x2 = np.fliplr(np.sort(x2m, axis=1))[:, 1:].mean(0)
-        #i, j = np.triu_indices_from(x2m, k=1)
-        #x2 = np.sort(x2m[i, j])[::-1][1:self.k + 1]
-
-        if len(x1) < self.k:
-            padding = self.k - len(x1)
-            x1 = np.concatenate([x1, np.array([0] * padding)])
-            x2 = np.concatenate([x2, np.array([0] * padding)])
+        x1 = np.concatenate([_x1 for _x1, _x2 in results], axis=0)
+        x2 = np.concatenate([_x2 for _x1, _x2 in results], axis=0)
 
         return x1, x2
 
 
 def smooth_weight(r, cutoff):
-    x = r.clip(max=cutoff) / cutoff
-    return (1 - x**2) ** 2
+    z = r.clip(max=cutoff) / cutoff
+    return (1 - z**2) ** 2
+
+
+@numba.jit(nopython=True, cache=True)
+def numba_inv_dm(dm, w, eps=1e-15):
+    n = dm.shape[0]
+    new = np.zeros((n, n))
+    for i in range(n):
+        for j in range(n):
+            new[i, j] = w[i] * w[j] / (dm[i, j] + eps)
+
+    return new
+
+
+def descriptors_serial(atoms: Atoms, k: int, cutoff: float, weight: Callable):
+    i, r_ij, D_ij = nbrlist("idD", atoms, cutoff=cutoff)
+
+    subarrays = split_array(i)
+    results = [local_descriptor(r_ij[_a], D_ij[_a], k=k, weight=weight) for _a in subarrays]
+
+    x1 = np.stack([_x1 for _x1, _x2 in results])
+    x2 = np.stack([_x2 for _x1, _x2 in results])
+
+    return x1, x2
+
+
+def local_descriptor(r_ij: np.ndarray, D_ij: np.ndarray, k: int, weight: Callable):
+    sorter = np.argsort(r_ij)[:k]
+    dist = r_ij[sorter]
+    vecs = D_ij[sorter]
+
+    w = weight(dist)
+    x1 = w / dist
+
+    r_jk = cdist(vecs, vecs)
+    x2m = numba_inv_dm(r_jk, w)
+    x2 = np.fliplr(np.sort(x2m, axis=1))[:, 1:].mean(0)
+
+    if len(x1) < k:
+        padding = k - len(x1)
+        zeros = np.zeros((padding))
+        x1 = np.concatenate([x1, zeros])
+        x2 = np.concatenate([x2, zeros])
+
+    return x1, x2
