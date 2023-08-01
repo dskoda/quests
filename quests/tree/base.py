@@ -11,7 +11,6 @@ class TreeNeighbors(ABC):
         **kwargs,
     ):
         self.x = x
-        self.n = len(x)
 
     @abstractmethod
     def build(self):
@@ -20,3 +19,7 @@ class TreeNeighbors(ABC):
     @abstractmethod
     def query(self, x: np.ndarray, k: int):
         pass
+
+    @property
+    def n(self):
+        return len(self.x)
