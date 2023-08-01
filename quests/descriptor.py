@@ -1,19 +1,15 @@
 from typing import Callable
 from typing import List
 
-import math
-import numba
 import multiprocess as mp
+import numba
 import numpy as np
 from ase import Atoms
 from matscipy.neighbours import neighbour_list as nbrlist
 from scipy.spatial.distance import cdist
-from scipy.spatial.distance import pdist, squareform
 
 from .batch import chunks
 from .batch import split_array
-from .time import print_log
-from .time import timetrack
 
 
 class QUESTS:
@@ -53,7 +49,9 @@ class QUESTS:
         return nbrlist(quantities, atoms, cutoff=self.cutoff)
 
     def get_descriptors_serial(self, atoms: Atoms):
-        return descriptors_serial(atoms, k=self.k, cutoff=self.cutoff, weight=self.weight)
+        return descriptors_serial(
+            atoms, k=self.k, cutoff=self.cutoff, weight=self.weight
+        )
 
     def get_descriptors_parallel(self, atoms: Atoms, jobs: int = 1):
         """Computes the (r, d) distances for all atoms in the structure.
@@ -103,7 +101,9 @@ class QUESTS:
 
     def get_all_descriptors_parallel(self, dset: List[Atoms], jobs: int = 1):
         def worker_fn(atoms):
-            return descriptors_serial(atoms, k=self.k, cutoff=self.cutoff, weight=self.weight)
+            return descriptors_serial(
+                atoms, k=self.k, cutoff=self.cutoff, weight=self.weight
+            )
 
         with mp.Pool(jobs) as p:
             results = p.map(worker_fn, dset)
@@ -134,7 +134,9 @@ def descriptors_serial(atoms: Atoms, k: int, cutoff: float, weight: Callable):
     i, r_ij, D_ij = nbrlist("idD", atoms, cutoff=cutoff)
 
     subarrays = split_array(i)
-    results = [local_descriptor(r_ij[_a], D_ij[_a], k=k, weight=weight) for _a in subarrays]
+    results = [
+        local_descriptor(r_ij[_a], D_ij[_a], k=k, weight=weight) for _a in subarrays
+    ]
 
     x1 = np.stack([_x1 for _x1, _x2 in results])
     x2 = np.stack([_x2 for _x1, _x2 in results])
