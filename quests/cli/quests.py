@@ -1,6 +1,7 @@
 import click
 
 from quests.cli.compare import compare
+from quests.cli.entropy import entropy
 
 
 class QuestsGroup(click.Group):
@@ -13,6 +14,7 @@ def quests():
 
 
 quests.add_command(compare)
+quests.add_command(entropy)
 
 
 if __name__ == "__main__":

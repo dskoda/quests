@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import argparse
+import random
 import time
 
 import numpy as np
@@ -51,6 +52,12 @@ def get_args():
         default=0.015,
         help="Bandwidth for computation of the kernel",
     )
+    parser.add_argument(
+        "--sample",
+        type=int,
+        default=None,
+        help="If specified, subsamples the dataset before quantifying its entropy",
+    )
 
     # Parse the arguments from the command line
     return parser.parse_args()
@@ -61,6 +68,9 @@ def main():
     assert args.input is not None, "Please specify an input file"
 
     dset = read(args.input, index=":")
+    if args.sample is not None:
+        dset = random.sample(dset, args.sample)
+
     q = QUESTS(
         cutoff=args.cutoff,
         k=args.nbrs_descriptor,

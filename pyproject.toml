@@ -14,12 +14,12 @@ keywords = ["feed", "reader", "tutorial"]
 dependencies = [
     "numpy",
     "pandas",
+    "numba",
     "matscipy",
     "ase",
     "click",
     "multiprocess",
     "pykdtree",
-    "annoy",
 ]
 
 [project.scripts]
