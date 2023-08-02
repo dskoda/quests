@@ -6,6 +6,8 @@ from ase.io import read
 from quests.compare import compare_datasets
 from quests.descriptor import QUESTS
 
+from .log import logger
+
 
 @click.command("compare")
 @click.argument("file_1", required=1)
@@ -51,16 +53,16 @@ def compare(file_1, file_2, k, cutoff, metric, output, nprocs):
         FILE_2: path to second file
     """
     if os.path.exists(output):
-        print(f"File {output} already exists! Exiting...")
+        logger(f"File {output} already exists! Exiting...")
         sys.exit(1)
 
-    print(f"Reading files {file_1} and {file_2}...")
+    logger(f"Reading files {file_1} and {file_2}...")
     dset1 = read(file_1, index=":")
     dset2 = read(file_2, index=":")
 
     q = QUESTS(cutoff=cutoff, k=k)
 
-    print("Comparing datasets")
+    logger("Comparing datasets")
     df = compare_datasets(
         dset1,
         dset2, 
@@ -69,5 +71,5 @@ def compare(file_1, file_2, k, cutoff, metric, output, nprocs):
         nprocs=nprocs
     )
 
-    print("Saving results")
+    logger("Saving results")
     df.to_csv(output)
