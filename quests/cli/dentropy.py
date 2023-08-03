@@ -58,6 +58,12 @@ from quests.tree.pykdtree import TreePyKDTree
     help="Number of jobs to distribute the calculation in (default: 1)",
 )
 @click.option(
+    "--kernel",
+    type=str,
+    default="epanechnikov",
+    help="Name of the kernel to use when computing the delta entropy",
+)
+@click.option(
     "-o",
     "--output",
     type=str,
@@ -74,6 +80,7 @@ def dentropy(
     nbrs_tree,
     bandwidth,
     jobs,
+    kernel,
     output,
 ):
     dset_1 = read(file_1, index=":")
@@ -109,6 +116,7 @@ def dentropy(
         h=bandwidth,
         nbrs=nbrs_tree,
         tree=tree,
+        kernel=kernel,
     )
     end_time = time.time()
     build_time = end_time - start_time
@@ -121,10 +129,10 @@ def dentropy(
     entropy_time = end_time - start_time
 
     logger(f"Delta entropy computed in: {entropy_time: .3f} s")
-    logger(f"Avg dH: {dH.mean(): .2f} s")
-    logger(f"Std dH: {dH.std(): .2f} s")
-    logger(f"Max dH: {dH.max(): .2f} s")
-    logger(f"Min dH: {dH.min(): .2f} s")
+    logger(f"Avg dH: {dH.mean(): .2f}")
+    logger(f"Std dH: {dH.std(): .2f}")
+    logger(f"Max dH: {dH.max(): .2f}")
+    logger(f"Min dH: {dH.min(): .2f}")
 
     if output is not None:
         results = {
@@ -135,6 +143,7 @@ def dentropy(
             "nbrs_descriptor": nbrs_descriptor,
             "nbrs_tree": nbrs_tree,
             "bandwidth": bandwidth,
+            "kernel": kernel,
             "jobs": jobs,
             "dH": dH.tolist(),
             "descriptor_time_1": descriptor_time_1,

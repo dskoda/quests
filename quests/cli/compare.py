@@ -3,10 +3,10 @@ import sys
 
 import click
 from ase.io import read
-from quests.compare import compare_datasets
-from quests.descriptor import QUESTS
 
 from .log import logger
+from quests.descriptor import QUESTS
+from quests.distance import compare_datasets
 
 
 @click.command("compare")
