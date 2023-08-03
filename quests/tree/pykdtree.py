@@ -10,10 +10,10 @@ class TreePyKDTree(TreeNeighbors):
         x: np.ndarray,
     ):
         super().__init__(x)
-        self.tree = self.build()
+        self.tree = None
 
     def build(self):
-        return KDTree(self.x)
+        self.tree = KDTree(self.x)
 
     def query(self, x: np.ndarray, k: int) -> np.ndarray:
         dij, _ = self.tree.query(x, k=k)

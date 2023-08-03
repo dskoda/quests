@@ -1,21 +1,19 @@
-import os
-import sys
 import json
-import click
-import random
 import time
 
+import click
 import numpy as np
 from ase.io import read
+
+from .log import logger
 from quests.descriptor import QUESTS
 from quests.entropy import EntropyEstimator
 from quests.tree.pykdtree import TreePyKDTree
 
-from .log import logger
 
-
-@click.command("entropy")
-@click.argument("file", required=1)
+@click.command("dentropy")
+@click.argument("file_1", required=1)
+@click.argument("file_2", required=1)
 @click.option(
     "-c",
     "--cutoff",
@@ -53,14 +51,6 @@ from .log import logger
     help="Bandwidth when computing the kernel (default: 0.015)",
 )
 @click.option(
-    "-s",
-    "--sample",
-    type=int,
-    default=None,
-    help="If given, takes a sample of the dataset before computing \
-            its entropy (default: uses the entire dataset)",
-)
-@click.option(
     "-j",
     "--jobs",
     type=int,
@@ -75,20 +65,19 @@ from .log import logger
     help="path to the json file that will contain the output\
             (default: no output produced)",
 )
-def entropy(
-    file,
+def dentropy(
+    file_1,
+    file_2,
     cutoff,
     cutoff_interaction,
     nbrs_descriptor,
     nbrs_tree,
     bandwidth,
-    sample,
     jobs,
     output,
 ):
-    dset = read(file, index=":")
-    if sample is not None:
-        dset = random.sample(dset, sample)
+    dset_1 = read(file_1, index=":")
+    dset_2 = read(file_2, index=":")
 
     q = QUESTS(
         cutoff=cutoff,
@@ -97,12 +86,20 @@ def entropy(
     )
 
     start_time = time.time()
-    x1, x2 = q.get_all_descriptors_parallel(dset, jobs=jobs)
+    x1, x2 = q.get_all_descriptors_parallel(dset_1, jobs=jobs)
     x = np.concatenate([x1, x2], axis=1)
     end_time = time.time()
-    descriptor_time = end_time - start_time
+    descriptor_time_1 = end_time - start_time
 
-    logger(f"Descriptors built in: {descriptor_time * 1000: .2f} ms")
+    logger(f"Descriptors for dataset 1 built in: {descriptor_time_1 * 1000: .2f} ms")
+
+    start_time = time.time()
+    y1, y2 = q.get_all_descriptors_parallel(dset_2, jobs=jobs)
+    y = np.concatenate([y1, y2], axis=1)
+    end_time = time.time()
+    descriptor_time_2 = end_time - start_time
+
+    logger(f"Descriptors for dataset 2 built in: {descriptor_time_2 * 1000: .2f} ms")
 
     start_time = time.time()
     tree = TreePyKDTree(x)
@@ -119,29 +116,32 @@ def entropy(
     logger(f"Tree/entropy built in: {build_time * 1000: .2f} ms")
 
     start_time = time.time()
-    entropy = H.dataset_entropy
+    dH = H.delta_entropy(y)
     end_time = time.time()
     entropy_time = end_time - start_time
 
-    logger(f"Entropy computed in: {entropy_time: .3f} s")
-    logger(f"Dataset entropy: {entropy: .2f} (nats) \
-            for a bandwidth {bandwidth: 0.3f}")
+    logger(f"Delta entropy computed in: {entropy_time: .3f} s")
+    logger(f"Avg dH: {dH.mean(): .2f} s")
+    logger(f"Std dH: {dH.std(): .2f} s")
+    logger(f"Max dH: {dH.max(): .2f} s")
+    logger(f"Min dH: {dH.min(): .2f} s")
 
     if output is not None:
         results = {
-            "file": file,
+            "file_1": file_1,
+            "file_2": file_2,
             "cutoff": cutoff,
             "cutoff_interaction": cutoff_interaction,
             "nbrs_descriptor": nbrs_descriptor,
             "nbrs_tree": nbrs_tree,
             "bandwidth": bandwidth,
-            "sample": sample,
             "jobs": jobs,
-            "entropy": entropy,
-            "descriptor_time": descriptor_time,
+            "dH": dH.tolist(),
+            "descriptor_time_1": descriptor_time_1,
+            "descriptor_time_2": descriptor_time_2,
             "build_time": build_time,
             "entropy_time": entropy_time,
         }
 
         with open(output, "w") as f:
-            json.dump(results, f, indent=4)
+            json.dump(results, f)
