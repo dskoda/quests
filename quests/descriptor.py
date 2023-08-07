@@ -65,7 +65,7 @@ class QUESTS:
             x1 (np.ndarray): radial distances for each atomic environment
             x2 (np.ndarray): propagated radial distances for environments
         """
-        if jobs == 1:
+        if jobs == 1 or len(atoms) == 1:
             return self.get_descriptors_serial(atoms)
 
         i, d, D = self.get_neighborlist(atoms, "idD")
@@ -82,6 +82,12 @@ class QUESTS:
         with mp.Pool(jobs) as p:
             results = p.map(worker_fn, subsets)
 
+        if len(results) == 1:
+            _x1, _x2 = results
+            x1 = np.array(_x1).reshape(1, -1)
+            x2 = np.array(_x2).reshape(1, -1)
+            return x1, x2
+
         x1 = np.stack([_x1 for res in results for _x1, _x2 in res])
         x2 = np.stack([_x2 for res in results for _x1, _x2 in res])
 
@@ -93,13 +99,16 @@ class QUESTS:
 
         x1, x2 = [], []
         for at in dset:
-            _x1, _x2 = self.get_descriptors(at)
+            _x1, _x2 = self.get_descriptors_parallel(at, jobs=jobs)
             x1.append(_x1)
             x2.append(_x2)
 
         return np.concatenate(x1, axis=0), np.concatenate(x2, axis=0)
 
     def get_all_descriptors_parallel(self, dset: List[Atoms], jobs: int = 1):
+        if len(dset) == 1:
+            return self.get_all_descriptors(dset, jobs=1)
+
         def worker_fn(atoms):
             return descriptors_serial(
                 atoms, k=self.k, cutoff=self.cutoff, weight=self.weight
@@ -107,6 +116,12 @@ class QUESTS:
 
         with mp.Pool(jobs) as p:
             results = p.map(worker_fn, dset)
+
+        if len(results) == 1:
+            _x1, _x2 = results
+            x1 = np.array(_x1).reshape(1, -1)
+            x2 = np.array(_x2).reshape(1, -1)
+            return x1, x2
 
         x1 = np.concatenate([_x1 for _x1, _x2 in results], axis=0)
         x2 = np.concatenate([_x2 for _x1, _x2 in results], axis=0)
@@ -133,10 +148,19 @@ def numba_inv_dm(dm, w, eps=1e-15):
 def descriptors_serial(atoms: Atoms, k: int, cutoff: float, weight: Callable):
     i, r_ij, D_ij = nbrlist("idD", atoms, cutoff=cutoff)
 
+    if len(r_ij) == 0:
+        return np.zeros((1, k)), np.zeros((1, k - 1))
+
     subarrays = split_array(i)
     results = [
         local_descriptor(r_ij[_a], D_ij[_a], k=k, weight=weight) for _a in subarrays
     ]
+
+    if len(results) == 1:
+        _x1, _x2 = results
+        x1 = np.array(_x1).reshape(1, -1)
+        x2 = np.array(_x2).reshape(1, -1)
+        return x1, x2
 
     x1 = np.stack([_x1 for _x1, _x2 in results])
     x2 = np.stack([_x2 for _x1, _x2 in results])

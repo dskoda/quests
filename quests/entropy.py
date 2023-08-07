@@ -104,7 +104,7 @@ class EntropyEstimator:
         return -logp
 
 
-def epanechnikov_kernel(z: np.ndarray):
+def epanechnikov_kernel(z: np.ndarray, eps: float = 1e-15):
     """Computes the Epachenikov kernel for normalized values z,
         z_i = (x - x_i) / h,
         where z is a matrix (n, nbrs), with n being the number of
@@ -113,7 +113,7 @@ def epanechnikov_kernel(z: np.ndarray):
 
     u = z * z
     k = 1 - u.clip(max=1)
-    return np.log(k.sum(axis=-1))
+    return np.log(k.sum(axis=-1) + eps)
 
 
 def gaussian_kernel(z: np.ndarray):
