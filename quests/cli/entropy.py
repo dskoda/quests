@@ -1,17 +1,17 @@
-import os
-import sys
 import json
-import click
+import os
 import random
+import sys
 import time
 
+import click
 import numpy as np
 from ase.io import read
+
+from .log import logger
 from quests.descriptor import QUESTS
 from quests.entropy import EntropyEstimator
 from quests.tree.pykdtree import TreePyKDTree
-
-from .log import logger
 
 
 @click.command("entropy")
@@ -53,6 +53,12 @@ from .log import logger
     help="Bandwidth when computing the kernel (default: 0.015)",
 )
 @click.option(
+    "--kernel",
+    type=str,
+    default="gaussian",
+    help="Name of the kernel to use when computing the delta entropy (default: gaussian)",
+)
+@click.option(
     "-s",
     "--sample",
     type=int,
@@ -82,6 +88,7 @@ def entropy(
     nbrs_descriptor,
     nbrs_tree,
     bandwidth,
+    kernel,
     sample,
     jobs,
     output,
@@ -112,6 +119,7 @@ def entropy(
         h=bandwidth,
         nbrs=nbrs_tree,
         tree=tree,
+        kernel=kernel,
     )
     end_time = time.time()
     build_time = end_time - start_time
@@ -124,8 +132,10 @@ def entropy(
     entropy_time = end_time - start_time
 
     logger(f"Entropy computed in: {entropy_time: .3f} s")
-    logger(f"Dataset entropy: {entropy: .2f} (nats) \
-            for a bandwidth {bandwidth: 0.3f}")
+    logger(
+        f"Dataset entropy: {entropy: .2f} (nats)"
+        + f"for a bandwidth {bandwidth: 0.3f}"
+    )
 
     if output is not None:
         results = {

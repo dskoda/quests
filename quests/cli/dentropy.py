@@ -51,17 +51,17 @@ from quests.tree.pykdtree import TreePyKDTree
     help="Bandwidth when computing the kernel (default: 0.015)",
 )
 @click.option(
+    "--kernel",
+    type=str,
+    default="gaussian",
+    help="Name of the kernel to use when computing the delta entropy (default: gaussian)",
+)
+@click.option(
     "-j",
     "--jobs",
     type=int,
     default=1,
     help="Number of jobs to distribute the calculation in (default: 1)",
-)
-@click.option(
-    "--kernel",
-    type=str,
-    default="epanechnikov",
-    help="Name of the kernel to use when computing the delta entropy",
 )
 @click.option(
     "-o",
@@ -79,8 +79,8 @@ def dentropy(
     nbrs_descriptor,
     nbrs_tree,
     bandwidth,
-    jobs,
     kernel,
+    jobs,
     output,
 ):
     dset_1 = read(file_1, index=":")
