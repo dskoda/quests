@@ -1,6 +1,7 @@
+from typing import Callable
+from typing import Union
+
 import numpy as np
-from annoy import AnnoyIndex
-from pykdtree.kdtree import KDTree
 from scipy.special import logsumexp
 
 from .distance import batch_distances
@@ -11,10 +12,10 @@ class EntropyEstimator:
     def __init__(
         self,
         x: np.ndarray,
-        h: float,
-        nbrs: int = 20,
-        tree: TreeNeighbors = None,
-        kernel: str = "epanechnikov",
+        h: float = 0.015,
+        nbrs: int = 100,
+        tree: TreeNeighbors = "pykdtree",
+        kernel: str = "gaussian",
     ):
         """Initializes the kernel-based entropy estimator.
 
@@ -31,17 +32,41 @@ class EntropyEstimator:
         self.n = len(x)
         self.h = h
         self.nbrs = nbrs
-        self.tree = tree
+        self.tree = self._get_tree(tree, x)
+        self.kernel = self._get_kernel(kernel)
 
-        kernel = kernel.lower()
-        if kernel == "epanechnikov":
-            self.kernel = epanechnikov_kernel
-        
-        elif kernel == "gaussian":
-            self.kernel = gaussian_kernel
+    def _get_tree(self, tree: Union[str, TreeNeighbors], x: np.ndarray) -> Callable:
+        if tree is None:
+            return None
+
+        if isinstance(tree, TreeNeighbors):
+            return tree
+
+        if not isinstance(tree, str):
+            raise ValueError(f"Tree type {type(tree)} not recognized")
+
+        name = tree.lower()
+
+        if name == "pykdtree":
+            from .tree.pykdtree import TreePyKDTree
+            tree = TreePyKDTree(x)
 
         else:
-            raise ValueError(f"Kernel {kernel} not supported")
+            raise ValueError(f"Tree name {name} not recognized")
+
+        tree.build()
+        return tree
+
+    def _get_kernel(self, name: str) -> Callable:
+        name = name.lower()
+        if name == "epanechnikov":
+            return epanechnikov_kernel
+        
+        elif name == "gaussian":
+            return gaussian_kernel
+
+        else:
+            raise ValueError(f"Kernel {name} not supported")
 
     def get_distances(self, x: np.ndarray) -> np.ndarray:
         if self.tree is not None:
