@@ -94,8 +94,11 @@ def entropy(
     output,
 ):
     dset = read(file, index=":")
-    if sample is not None and len(dset) > sample:
-        dset = random.sample(dset, sample)
+    if sample is not None:
+        if len(dset) > sample:
+            dset = random.sample(dset, sample)
+        else:
+            sample = len(dset)
 
     q = QUESTS(
         cutoff=cutoff,
