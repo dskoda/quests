@@ -1,13 +1,11 @@
 import json
-import os
-import random
-import sys
 import time
 
 import click
 import numpy as np
 from ase.io import read
 
+from .log import format_time
 from .log import logger
 from quests.descriptor import QUESTS
 from quests.entropy import EntropyEstimator
@@ -107,7 +105,7 @@ def entropy(
     end_time = time.time()
     descriptor_time = end_time - start_time
 
-    logger(f"Descriptors built in: {descriptor_time * 1000: .2f} ms")
+    logger(f"Descriptors built in: {format_time(descriptor_time)}")
 
     if sample is not None:
         if len(x) > sample:
@@ -129,14 +127,14 @@ def entropy(
     end_time = time.time()
     build_time = end_time - start_time
 
-    logger(f"Tree/entropy built in: {build_time * 1000: .2f} ms")
+    logger(f"Tree/entropy built in: {format_time(build_time)}")
 
     start_time = time.time()
     entropy = H.dataset_entropy
     end_time = time.time()
     entropy_time = end_time - start_time
 
-    logger(f"Entropy computed in: {entropy_time: .3f} s")
+    logger(f"Entropy computed in: {format_time(entropy_time)}")
     logger(
         f"Dataset entropy: {entropy: .2f} (nats)"
         + f"for a bandwidth {bandwidth: 0.3f}"
