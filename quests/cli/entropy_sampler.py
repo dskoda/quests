@@ -10,7 +10,7 @@ from quests.descriptor import QUESTS
 from quests.entropy import EntropyEstimator
 
 
-@click.command("entropy")
+@click.command("entropy_sampler")
 @click.argument("file", required=1)
 @click.option(
     "-c",
@@ -97,6 +97,7 @@ def entropy_sampler(
     jobs,
     output,
 ):
+    logger(f"Sampling entropies for: {file}")
     dset = read(file, index=":")
 
     q = QUESTS(
@@ -113,12 +114,10 @@ def entropy_sampler(
 
     logger(f"Descriptors built in: {descriptor_time * 1000: .2f} ms")
 
-    if sample is not None:
-        if len(x) > sample:
-            i = np.random.randint(0, len(x), sample)
-            x = x[i]
-        else:
-            sample = len(x)
+    # if dataset is smaller than sample, no need to
+    # run multiple times
+    if len(x) <= sample:
+        num_runs = 1
 
     entropies = []
     for n in range(num_runs):
