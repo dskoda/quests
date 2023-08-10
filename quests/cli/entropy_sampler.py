@@ -1,7 +1,4 @@
 import json
-import os
-import random
-import sys
 import time
 
 import click
@@ -11,7 +8,6 @@ from ase.io import read
 from .log import logger
 from quests.descriptor import QUESTS
 from quests.entropy import EntropyEstimator
-from quests.tree.pykdtree import TreePyKDTree
 
 
 @click.command("entropy")
@@ -62,9 +58,16 @@ from quests.tree.pykdtree import TreePyKDTree
     "-s",
     "--sample",
     type=int,
-    default=None,
+    default=1000,
     help="If given, takes a sample of the environments before computing \
             its entropy (default: uses the entire dataset)",
+)
+@click.option(
+    "-n",
+    "--num_runs",
+    type=int,
+    default=20,
+    help="Number of runs to resample (default: 20)",
 )
 @click.option(
     "-j",
@@ -81,7 +84,7 @@ from quests.tree.pykdtree import TreePyKDTree
     help="path to the json file that will contain the output\
             (default: no output produced)",
 )
-def entropy(
+def entropy_sampler(
     file,
     cutoff,
     cutoff_interaction,
@@ -90,6 +93,7 @@ def entropy(
     bandwidth,
     kernel,
     sample,
+    num_runs,
     jobs,
     output,
 ):
@@ -116,31 +120,25 @@ def entropy(
         else:
             sample = len(x)
 
-    start_time = time.time()
-    tree = TreePyKDTree(x)
-    tree.build()
-    H = EntropyEstimator(
-        x,
-        h=bandwidth,
-        nbrs=nbrs_tree,
-        tree=tree,
-        kernel=kernel,
-    )
-    end_time = time.time()
-    build_time = end_time - start_time
+    entropies = []
+    for n in range(num_runs):
+        if len(x) > sample:
+            i = np.random.randint(0, len(x), sample)
+            xsample = x[i]
+        else:
+            xsample = x
 
-    logger(f"Tree/entropy built in: {build_time * 1000: .2f} ms")
+        H = EntropyEstimator(
+            xsample,
+            h=bandwidth,
+            nbrs=nbrs_tree,
+            kernel=kernel,
+        )
 
-    start_time = time.time()
-    entropy = H.dataset_entropy
-    end_time = time.time()
-    entropy_time = end_time - start_time
+        entropy = H.dataset_entropy
+        entropies.append(entropy)
 
-    logger(f"Entropy computed in: {entropy_time: .3f} s")
-    logger(
-        f"Dataset entropy: {entropy: .2f} (nats)"
-        + f"for a bandwidth {bandwidth: 0.3f}"
-    )
+        logger(f"Entropy {n:02d}: {entropy: .2f} (nats)")
 
     if output is not None:
         results = {
@@ -151,11 +149,9 @@ def entropy(
             "nbrs_tree": nbrs_tree,
             "bandwidth": bandwidth,
             "sample": sample,
+            "num_runs": num_runs,
             "jobs": jobs,
-            "entropy": entropy,
-            "descriptor_time": descriptor_time,
-            "build_time": build_time,
-            "entropy_time": entropy_time,
+            "entropies": entropies,
         }
 
         with open(output, "w") as f:

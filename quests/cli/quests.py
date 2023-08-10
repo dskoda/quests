@@ -2,6 +2,7 @@ import click
 
 from quests.cli.compare import compare
 from quests.cli.entropy import entropy
+from quests.cli.entropy_sampler import entropy_sampler
 from quests.cli.dentropy import dentropy
 
 
@@ -16,6 +17,7 @@ def quests():
 
 quests.add_command(compare)
 quests.add_command(entropy)
+quests.add_command(entropy_sampler)
 quests.add_command(dentropy)
 
 
