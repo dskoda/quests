@@ -9,7 +9,6 @@ from .log import format_time
 from .log import logger
 from quests.descriptor import QUESTS
 from quests.entropy import EntropyEstimator
-from quests.tree.pykdtree import TreePyKDTree
 
 
 @click.command("entropy")
@@ -115,13 +114,10 @@ def entropy(
             sample = len(x)
 
     start_time = time.time()
-    tree = TreePyKDTree(x)
-    tree.build()
     H = EntropyEstimator(
         x,
         h=bandwidth,
         nbrs=nbrs_tree,
-        tree=tree,
         kernel=kernel,
     )
     end_time = time.time()
