@@ -17,7 +17,7 @@ def add_box(atoms: Atoms, vacuum: float = 25) -> Atoms:
         return atoms
 
     r = atoms.positions
-    L = (coords.max(0) - coords.min(0)).max() + vacuum
+    L = (r.max(0) - r.min(0)).max() + vacuum
     diag = np.array([L, L, L])
 
     box = np.diag(diag)
