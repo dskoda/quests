@@ -8,6 +8,7 @@ from ase.io import read
 from .log import logger
 from quests.descriptor import QUESTS
 from quests.entropy import EntropyEstimator
+from quests.pbc import add_box
 
 
 @click.command("entropy_sampler")
@@ -99,6 +100,10 @@ def entropy_sampler(
 ):
     logger(f"Sampling entropies for: {file}")
     dset = read(file, index=":")
+    dset = [
+        add_box(atoms)
+        for atoms in dset
+    ]
 
     q = QUESTS(
         cutoff=cutoff,

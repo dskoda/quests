@@ -106,7 +106,7 @@ class QUESTS:
         return np.concatenate(x1, axis=0), np.concatenate(x2, axis=0)
 
     def get_all_descriptors_parallel(self, dset: List[Atoms], jobs: int = 1):
-        if len(dset) == 1:
+        if len(dset) == 1 or jobs == 1:
             return self.get_all_descriptors(dset, jobs=1)
 
         def worker_fn(atoms):
