@@ -1,3 +1,4 @@
+import sys
 import json
 import time
 
@@ -98,6 +99,9 @@ def entropy_sampler(
     jobs,
     output,
 ):
+    if output is not None and os.path.exists(output):
+        sys.exit(0)
+
     logger(f"Sampling entropies for: {file}")
     dset = read(file, index=":")
     dset = [
