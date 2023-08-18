@@ -1,7 +1,9 @@
+import os
 import sys
 import json
 import time
 
+from typing import Iterable
 import click
 import numpy as np
 from ase.io import read
@@ -10,6 +12,13 @@ from .log import logger
 from quests.descriptor import QUESTS
 from quests.entropy import EntropyEstimator
 from quests.pbc import add_box
+
+
+def sample_indices(size: int, n: int):
+    if size < n:
+        return np.arange(0, size, 1, dtype=int)
+
+    return np.random.randint(0, size, n)
 
 
 @click.command("entropy_sampler")
@@ -65,6 +74,12 @@ from quests.pbc import add_box
             its entropy (default: uses the entire dataset)",
 )
 @click.option(
+    "--sample_dataset",
+    is_flag=True,
+    default=False,
+    help="If True, subsamples the dataset as opposed to the environment.",
+)
+@click.option(
     "-n",
     "--num_runs",
     type=int,
@@ -95,6 +110,7 @@ def entropy_sampler(
     bandwidth,
     kernel,
     sample,
+    sample_dataset,
     num_runs,
     jobs,
     output,
@@ -104,10 +120,7 @@ def entropy_sampler(
 
     logger(f"Sampling entropies for: {file}")
     dset = read(file, index=":")
-    dset = [
-        add_box(atoms)
-        for atoms in dset
-    ]
+    dset = [add_box(atoms) for atoms in dset]
 
     q = QUESTS(
         cutoff=cutoff,
@@ -128,13 +141,33 @@ def entropy_sampler(
     if len(x) <= sample:
         num_runs = 1
 
+    if sample_dataset:
+        # create indices for the dataset
+        start = 0
+        dset_indices = []
+        for i, atoms in enumerate(dset):
+            num_atoms = len(atoms)
+            idx = np.arange(start, start + num_atoms, 1, dtype=int)
+            dset_indices.append(idx)
+            start = start + num_atoms
+
+        def sample():
+            indices = sample_indices(len(dset_indices), sample) 
+            x_indices = np.concatenate([
+                dset_indices[i] for i in indices
+            ])
+            return x[x_indices]
+
+    else:
+        def sample():
+            indices = sample_indices(len(x), sample)
+            return x[indices]
+
+        
+    # computing the entropies
     entropies = []
     for n in range(num_runs):
-        if len(x) > sample:
-            i = np.random.randint(0, len(x), sample)
-            xsample = x[i]
-        else:
-            xsample = x
+        xsample = sample()
 
         H = EntropyEstimator(
             xsample,
