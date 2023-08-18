@@ -151,7 +151,7 @@ def entropy_sampler(
             dset_indices.append(idx)
             start = start + num_atoms
 
-        def sample():
+        def sample_items():
             indices = sample_indices(len(dset_indices), sample) 
             x_indices = np.concatenate([
                 dset_indices[i] for i in indices
@@ -159,7 +159,7 @@ def entropy_sampler(
             return x[x_indices]
 
     else:
-        def sample():
+        def sample_items():
             indices = sample_indices(len(x), sample)
             return x[indices]
 
@@ -167,7 +167,7 @@ def entropy_sampler(
     # computing the entropies
     entropies = []
     for n in range(num_runs):
-        xsample = sample()
+        xsample = sample_items()
 
         H = EntropyEstimator(
             xsample,
