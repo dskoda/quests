@@ -152,7 +152,7 @@ def compare_datasets(
     return pd.DataFrame(results)
 
 
-def batch_distances(x, y, batch_size=2000):
+def batch_distances(x, y, batch_size=2000, metric="euclidean"):
     Nx = x.shape[0]
     Ny = y.shape[0]
     dm = np.zeros((Nx, Ny))  # initialize distance matrix
@@ -165,7 +165,7 @@ def batch_distances(x, y, batch_size=2000):
             batch1 = x[i:imax]
             batch2 = y[j:jmax]
 
-            distances = cdist(batch1, batch2)
+            distances = cdist(batch1, batch2, metric=metric)
 
             # store distances in matrix
             dm[i:imax, j:jmax] = distances

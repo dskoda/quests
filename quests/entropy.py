@@ -16,6 +16,7 @@ class EntropyEstimator:
         nbrs: int = 100,
         tree: TreeNeighbors = "pykdtree",
         kernel: str = "gaussian",
+        metric: str = "euclidean",
     ):
         """Initializes the kernel-based entropy estimator.
 
@@ -34,6 +35,7 @@ class EntropyEstimator:
         self.nbrs = nbrs
         self.tree = self._get_tree(tree, x)
         self.kernel = self._get_kernel(kernel)
+        self.metric = metric
 
     def _get_tree(self, tree: Union[str, TreeNeighbors], x: np.ndarray) -> Callable:
         if tree is None:
@@ -78,7 +80,7 @@ class EntropyEstimator:
         return self.tree.query(x, k=self.nbrs)
 
     def _get_distances_batch(self, x: np.ndarray) -> np.ndarray:
-        return batch_distances(x, self.x)
+        return batch_distances(x, self.x, metric=self.metric)
 
     def zij(self, x: np.ndarray) -> np.ndarray:
         """constructs the distance matrices"""
