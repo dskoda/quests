@@ -85,7 +85,13 @@ class EntropyEstimator:
     def zij(self, x: np.ndarray) -> np.ndarray:
         """constructs the distance matrices"""
         dij = self.get_distances(x)
-        return dij / self.h
+        if isinstance(dij, np.ndarray):
+            return dij / self.h
+
+        return [
+            d / self.h
+            for d in dij
+        ]
 
     def entropy(self, x: np.ndarray) -> float:
         """Computes the entropy of the points with respect to the
