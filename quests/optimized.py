@@ -109,3 +109,17 @@ def cdist_numba(A, B):
                 dist[i, j] = math.sqrt(d)
 
     return dist
+
+
+@nb.njit(fastmath=True)
+def argsort_numba(X: np.ndarray) -> np.ndarray:
+    M, N = X.shape
+
+    # Adapting argsort
+    sorter = np.empty(X.shape, dtype=np.int64)
+    for i in range(M):
+        line_sorter = np.argsort(X[i])
+        for j in range(N):
+            sorter[i, j] = line_sorter[j]
+
+    return sorter
