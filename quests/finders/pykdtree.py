@@ -2,11 +2,11 @@ import multiprocess as mp
 import numpy as np
 from quests.batch import chunks
 
-from .base import FinderNeighbors
+from .base import NeighborsFinder
 from pykdtree.kdfinder import KDTree
 
 
-class KDTreeFinder(FinderNeighbors):
+class KDTreeFinder(NeighborsFinder):
     def __init__(
         self,
         x: np.ndarray,

@@ -2,11 +2,11 @@ import numpy as np
 from quests.batch import split_array
 from sklearn.cluster import DBSCAN
 
-from .base import FinderNeighbors
+from .base import NeighborsFinder
 from pykdtree.kdfinder import KDTreeFinder
 
 
-class FinderDBScan(FinderNeighbors):
+class FinderDBScan(NeighborsFinder):
     def __init__(self, x: np.ndarray, eps: float 0.03, min_samples: int = 5, **kwargs):
         self.x = x
         self.db = DBSCAN(eps=eps, min_samples=min_samples, **kwargs)

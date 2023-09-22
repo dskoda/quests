@@ -1,10 +1,10 @@
 import numpy as np
 
-from .base import FinderNeighbors
+from .base import NeighborsFinder
 from pynndescent import NNDescent
 
 
-class FinderPyNNDescent(FinderNeighbors):
+class FinderPyNNDescent(NeighborsFinder):
     def __init__(
         self,
         x: np.ndarray,

@@ -1,10 +1,10 @@
 import numpy as np
 
-from .base import FinderNeighbors
+from .base import NeighborsFinder
 from annoy import AnnoyIndex
 
 
-class FinderAnnoy(FinderNeighbors):
+class FinderAnnoy(NeighborsFinder):
     def __init__(
         self,
         x: np.ndarray,
