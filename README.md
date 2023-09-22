@@ -1,4 +1,4 @@
-# QUESTS: Quick Uncertainty Estimation via STructural Similarity
+# QUESTS: Quick Uncertainty and Entropy from STructural Similarity
 
 QUESTS provides model-free uncertainty estimation methods for interatomic potentials.
 Among the methods, we propose a structural descriptor based on k-nearest neighbors that is:
