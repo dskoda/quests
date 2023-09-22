@@ -4,7 +4,7 @@ from abc import abstractmethod
 import numpy as np
 
 
-class TreeNeighbors(ABC):
+class NeighborsFinder(ABC):
     def __init__(
         self,
         x: np.ndarray,

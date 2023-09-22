@@ -4,10 +4,10 @@ import tqdm
 from quests.distance import batch_distances
 from sklearn.cluster import MiniBatchKMeans
 
-from .base import TreeNeighbors
+from .base import FinderNeighbors
 
 
-class TreeKMeans(TreeNeighbors):
+class FinderKMeans(FinderNeighbors):
     def __init__(
         self,
         x: np.ndarray,

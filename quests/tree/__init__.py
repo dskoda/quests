@@ -1,1 +1,1 @@
-from .base import TreeNeighbors
+from .base import FinderNeighbors

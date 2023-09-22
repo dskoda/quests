@@ -1,10 +1,10 @@
 import numpy as np
 
-from .base import TreeNeighbors
+from .base import FinderNeighbors
 from annoy import AnnoyIndex
 
 
-class TreeAnnoy(TreeNeighbors):
+class FinderAnnoy(FinderNeighbors):
     def __init__(
         self,
         x: np.ndarray,
@@ -13,7 +13,7 @@ class TreeAnnoy(TreeNeighbors):
         n_trees: int = 100,
     ):
         super().__init__(x)
-        self.tree = self.build(
+        self.finder = self.build(
             metric=metric,
             n_jobs=n_jobs,
             n_trees=n_trees,
@@ -38,7 +38,7 @@ class TreeAnnoy(TreeNeighbors):
     def query(self, x: np.ndarray, k: int) -> np.ndarray:
         d = []
         for _x in x:
-            _, dij = self.tree.get_nns_by_vector(_x, k, include_distances=True)
+            _, dij = self.finder.get_nns_by_vector(_x, k, include_distances=True)
             d.append(dij)
 
         return np.stack(d)
