@@ -4,6 +4,7 @@ from numba import types
 from numba.typed import Dict
 from numba.typed import List
 
+from ase import Atoms
 from .matrix import argsort
 from .matrix import cdist
 from .matrix import inverse_3d
@@ -13,8 +14,12 @@ from .matrix import stack_xyz
 IntList = types.ListType(types.int64)
 FloatArrayList = types.Array(types.float64, 1, "C")
 
+DEFAULT_CUTOFF: float = 5.0
+DEFAULT_K: int = 32
+EPS: float = 1e-15
 
-@nb.njit(fastmath=True)
+
+@nb.njit(fastmath=True, cache=True)
 def descriptor_weight(r: float, cutoff: float):
     if r > cutoff:
         r = cutoff
@@ -23,7 +28,7 @@ def descriptor_weight(r: float, cutoff: float):
     return (1 - z**2) ** 2
 
 
-@nb.njit(fastmath=True)
+@nb.njit(fastmath=True, cache=True)
 def descriptor_x1(
     dm: np.ndarray,
     sorter: np.ndarray,
@@ -54,7 +59,7 @@ def descriptor_x1(
     return x1
 
 
-@nb.njit(fastmath=True)
+@nb.njit(fastmath=True, cache=True)
 def descriptor_x2(
     dm: np.ndarray,
     sorter: np.ndarray,
@@ -109,12 +114,12 @@ def descriptor_x2(
     return x2
 
 
-@nb.njit(fastmath=True)
+@nb.njit(fastmath=True, cache=True)
 def descriptor_nopbc(
     xyz: np.ndarray,
-    k: int = 32,
-    cutoff: float = 5.0,
-    eps: float = 1e-15,
+    k: int = DEFAULT_K,
+    cutoff: float = DEFAULT_CUTOFF,
+    eps: float = EPS,
 ) -> np.ndarray:
     dm = pdist(xyz)
     sorter = argsort(dm)
@@ -124,7 +129,7 @@ def descriptor_nopbc(
     return x1, x2
 
 
-@nb.njit(fastmath=True)
+@nb.njit(fastmath=True, cache=True)
 def get_num_bins(cell: np.ndarray, cutoff: float):
     bx = np.cross(cell[1], cell[2])
     by = np.cross(cell[2], cell[0])
@@ -151,12 +156,12 @@ def get_num_bins(cell: np.ndarray, cutoff: float):
     return n_bins, n_nbr_bins
 
 
-@nb.njit(fastmath=True)
+@nb.njit(fastmath=True, cache=True)
 def to_contiguous_index(nx, ny, nz, n_bins):
     return nx + ny * n_bins[0] + nz * n_bins[0] * n_bins[1]
 
 
-@nb.njit(fastmath=True)
+@nb.njit(fastmath=True, cache=True)
 def to_tuple_index(idx, n_bins):
     nz = idx // (n_bins[0] * n_bins[1])
     idx -= nz * n_bins[0] * n_bins[1]
@@ -183,7 +188,7 @@ def create_bin_dict(bins: np.ndarray, max_bins: int):
     return bin_dict
 
 
-@nb.njit(fastmath=True)
+@nb.njit(fastmath=True, cache=True)
 def wrap_pbc(xyz: np.ndarray, cell: np.ndarray):
     inv = inverse_3d(cell)
     frac_coords = np.dot(xyz, inv)
@@ -192,7 +197,7 @@ def wrap_pbc(xyz: np.ndarray, cell: np.ndarray):
     return frac_coords, cart_coords
 
 
-@nb.njit(fastmath=True)
+@nb.njit(fastmath=True, cache=True)
 def bin_atoms(xyz: np.ndarray, cell: np.ndarray, n_bins: np.ndarray):
     """Separates the atoms into bins by splitting the `cell` into
     `n_bins` depending on the vector directions.
@@ -210,13 +215,13 @@ def bin_atoms(xyz: np.ndarray, cell: np.ndarray, n_bins: np.ndarray):
     return bins, cart_coords
 
 
-@nb.njit(fastmath=True, parallel=True)
+@nb.njit(fastmath=True, cache=True, parallel=True)
 def descriptor_pbc(
     xyz: np.ndarray,
     cell: np.ndarray,
-    k: int = 32,
-    cutoff: float = 5.0,
-    eps: float = 1e-15,
+    k: int = DEFAULT_K,
+    cutoff: float = DEFAULT_CUTOFF,
+    eps: float = EPS,
 ) -> np.ndarray:
     N = xyz.shape[0]
 
@@ -300,7 +305,7 @@ def descriptor_pbc(
         # do not sort neighbors outside of the bin to save time
         sorter = argsort(dm)
 
-        # loops over the atoms in the bin to avoid computing the 
+        # loops over the atoms in the bin to avoid computing the
         # distance matrix between all neighbors
         for j in range(n_atoms_bin):
             atom_j = atoms[j]
@@ -335,5 +340,32 @@ def descriptor_pbc(
 
     # finished processing this bin. Now, return and process
     # another bin until everything is ready.
+
+    return x1, x2
+
+
+def get_descriptors(
+    dset: List[Atoms],
+    k: int = DEFAULT_K,
+    cutoff: float = DEFAULT_CUTOFF,
+    concat: bool = True,
+):
+    x1, x2 = [], []
+    for atoms in dset:
+        if not np.all(atoms.pbc):
+            _x1, _x2 = descriptor_nopbc(atoms.positions, k=k, cutoff=cutoff)
+        else:
+            _x1, _x2 = descriptor_pbc(
+                atoms.positions, cell=np.array(atoms.cell), k=k, cutoff=cutoff
+            )
+
+        x1.append(_x1)
+        x2.append(_x2)
+
+    x1 = np.concatenate(x1)
+    x2 = np.concatenate(x2)
+
+    if concat:
+        return np.concatenate([x1, x2], axis=1)
 
     return x1, x2
