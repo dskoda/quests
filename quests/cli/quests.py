@@ -1,9 +1,6 @@
 import click
 
-from quests.cli.compare import compare
-from quests.cli.entropy_flex import entropy_flex
-from quests.cli.entropy_sampler import entropy_sampler
-from quests.cli.dentropy import dentropy
+from quests.cli.entropy import entropy
 
 
 class QuestsGroup(click.Group):
@@ -12,13 +9,10 @@ class QuestsGroup(click.Group):
 
 @click.command(cls=QuestsGroup)
 def quests():
-    """Command line interface for mkite_core"""
+    """Command line interface for quests"""
 
 
-quests.add_command(compare)
-quests.add_command(entropy_flex)
-quests.add_command(entropy_sampler)
-quests.add_command(dentropy)
+quests.add_command(entropy)
 
 
 if __name__ == "__main__":
