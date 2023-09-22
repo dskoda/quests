@@ -6,6 +6,9 @@ from numba.typed import List
 
 from .optimized import argsort_numba
 from .optimized import cdist_numba
+from .optimized import inverse_3d
+from .optimized import mat_vec_mul_3d
+from .optimized import pdist_numba
 
 IntList = types.ListType(types.int64)
 FloatArrayList = types.Array(types.float64, 1, "C")
@@ -29,16 +32,16 @@ def descriptor_x1(
     max_rows: int = -1,
 ) -> np.ndarray:
     N = dm.shape[0]
-    # Lazy initialization of the descriptor matrix
-    if N > k:
-        x1 = np.empty((N, k))
-        jmax = k
-    else:
-        x1 = np.full((N, k), fill_value=0.0)
-        jmax = N - 1
-
     if max_rows <= 0:
         max_rows = N
+
+    # Lazy initialization of the descriptor matrix
+    if N > k:
+        x1 = np.empty((max_rows, k))
+        jmax = k
+    else:
+        x1 = np.full((max_rows, k), fill_value=0.0)
+        jmax = N - 1
 
     # Computes the descriptor x1 in parallel
     for i in range(max_rows):
@@ -61,20 +64,19 @@ def descriptor_x2(
     max_rows: int = -1,
 ) -> np.ndarray:
     N = dm.shape[0]
+    if max_rows <= 0:
+        max_rows = N
+
     # Lazy initialization of the matrix
     if N > k:
-        x2 = np.empty((N, k - 1))
+        x2 = np.empty((max_rows, k - 1))
         jmax = k
     else:
-        x2 = np.full((N, k - 1), fill_value=0.0)
+        x2 = np.full((max_rows, k - 1), fill_value=0.0)
         jmax = N - 1
 
-    n_rows = N
-    if max_rows > 0:
-        n_rows = max_rows
-
     # Computes the second descriptor
-    for i in range(n_rows):
+    for i in range(max_rows):
         rjl = np.full((k, k), fill_value=0.0)
 
         # first compute the cross distances
@@ -115,7 +117,7 @@ def descriptor_nopbc(
     cutoff: float = 5.0,
     eps: float = 1e-15,
 ) -> np.ndarray:
-    dm = cdist_numba(xyz, xyz)
+    dm = pdist_numba(xyz)
     sorter = argsort_numba(dm)
 
     x1 = descriptor_x1(dm, sorter, k, cutoff)
@@ -194,6 +196,33 @@ def create_bin_dict(bins: np.ndarray, max_bins: int):
     return bin_dict
 
 
+@nb.njit(fastmath=True)
+def wrap_pbc(xyz: np.ndarray, cell: np.ndarray):
+    inv = inverse_3d(cell)
+    frac_coords = np.dot(xyz, inv)
+    frac_coords = frac_coords % 1.0
+    cart_coords = np.dot(frac_coords, cell)
+    return frac_coords, cart_coords
+
+
+@nb.njit(fastmath=True)
+def bin_atoms(xyz: np.ndarray, cell: np.ndarray, n_bins: np.ndarray):
+    """Separates the atoms into bins by splitting the `cell` into
+    `n_bins` depending on the vector directions.
+    """
+    # make sure the coordinates are in fractional ones first
+    frac_coords, cart_coords = wrap_pbc(xyz, cell)
+
+    # each direction will be split in bins
+    bin_size = 1.0 / n_bins
+
+    # bins the atoms using vectorized approaches
+    xyz_bins = (frac_coords // bin_size).astype(np.int64)
+    bins = to_contiguous_index(xyz_bins[:, 0], xyz_bins[:, 1], xyz_bins[:, 2], n_bins)
+
+    return bins, cart_coords
+
+
 @nb.njit(fastmath=True, parallel=True)
 def descriptor_pbc(
     xyz: np.ndarray,
@@ -203,6 +232,7 @@ def descriptor_pbc(
     eps: float = 1e-15,
 ) -> np.ndarray:
     N = xyz.shape[0]
+
     n_bins, n_nbr_bins = get_num_bins(cell, cutoff)
 
     # this is how many bins we will have to explore to make sure we get
@@ -212,18 +242,7 @@ def descriptor_pbc(
     # this is the number of bins we will partition the existing cell into
     n_bins_x, n_bins_y, n_bins_z = n_bins
 
-    # separate the atoms into bins by splitting the cell into
-    # the appropriate number of bins
-    inv = np.linalg.inv(cell)
-    frac_coords = np.dot(xyz, inv)
-    # wrap the coordinates back into the cell
-    frac_coords = frac_coords % 1.0
-    cart_coords = np.dot(frac_coords, cell)
-    bin_size = 1.0 / n_bins
-
-    # bins the atoms using vectorized approaches
-    xyz_bins = (frac_coords // bin_size).astype(np.int64)
-    bins = to_contiguous_index(xyz_bins[:, 0], xyz_bins[:, 1], xyz_bins[:, 2], n_bins)
+    bins, cart_coords = bin_atoms(xyz, cell, n_bins)
 
     max_bins = np.prod(n_bins)
     bin_dict = create_bin_dict(bins, max_bins)
@@ -231,6 +250,8 @@ def descriptor_pbc(
     # initializes the descriptors
     x1 = np.full((N, k), fill_value=0.0)
     x2 = np.full((N, k - 1), fill_value=0.0)
+
+    # OPTIM: until here, it takes 70 ms for 300k atoms
 
     # now we can compute the descriptors by looping over bins
     # this should be computed in parallel, so we simply use nb.prange
@@ -250,10 +271,12 @@ def descriptor_pbc(
         # bin_xyz is the list of all positions within and adjacent
         # to the bin up to the cutoff
         bin_xyz = List.empty_list(FloatArrayList)
+        nbrs_xyz = List.empty_list(FloatArrayList)
 
         # we start with the positions within the bin
         for at in atoms:
             bin_xyz.append(cart_coords[at])
+            nbrs_xyz.append(cart_coords[at])
 
         # then, we explore all bins adjacent to the current bin
         # within the cutoff
@@ -279,35 +302,52 @@ def descriptor_pbc(
                     # now appends all shifted positions of atoms within
                     # this neighboring bin
                     for atom_j in bin_dict[nbrs_i]:
-                        bin_xyz.append(cart_coords[atom_j] + shift)
+                        nbrs_xyz.append(cart_coords[atom_j] + shift)
 
         # now concatenate all positions to obtain all atoms
         # relevant for the bin
         bin_xyz = stack_xyz(bin_xyz)
+        nbrs_xyz = stack_xyz(nbrs_xyz)
 
-        # finally, compute the distance matrix and the descriptor
-        dm = cdist_numba(bin_xyz, bin_xyz)
+        # compute the distance between the bins and all neighbors
+        dm = cdist_numba(bin_xyz, nbrs_xyz)
 
         # do not sort neighbors outside of the bin to save time
-        sorter = argsort_numba(dm, sort_max=n_atoms_bin)
+        sorter = argsort_numba(dm)
 
-        # compute the descriptors only for atoms within the bin
-        bin_x1 = descriptor_x1(dm, sorter, k, cutoff, max_rows=n_atoms_bin)
-        bin_x2 = descriptor_x2(dm, sorter, k, cutoff, max_rows=n_atoms_bin)
-
-        # transfer the computed descriptors to the x1, x2 matrices
+        # loops over the atoms in the bin to avoid computing the full distance matrix
         for j in range(n_atoms_bin):
             atom_j = atoms[j]
 
-            # x2 has k-1 columns
-            for col in range(k - 1):
-                x1[atom_j, col] = bin_x1[j, col]
-                x2[atom_j, col] = bin_x2[j, col]
+            # get the positions from the neighbors
+            atom_xyz = np.empty((k + 1, 3))
+            for nbr in range(k + 1):
+                nbr_idx = sorter[j, nbr]
+                atom_xyz[nbr] = nbrs_xyz[nbr_idx]
+
+            # computes the distance matrix only for the atom and its
+            # k-nearest neighbors
+            atom_dm = pdist_numba(atom_xyz)
+
+            # the new distance matrix is already sorted, so the new
+            # sorter is basically an arange
+            atom_sorter = np.empty((1, k + 1), dtype=sorter.dtype)
+            for v in range(k + 1):
+                atom_sorter[0, v] = v
+
+            # compute the descriptors only for atoms within the bin
+            atom_x1 = descriptor_x1(atom_dm, atom_sorter, k, cutoff, max_rows=1)
+            atom_x2 = descriptor_x2(atom_dm, atom_sorter, k, cutoff, max_rows=1)
 
             # x1 has k columns
-            x1[atom_j, k - 1] = bin_x1[j, k - 1]
+            for col in range(k):
+                x1[atom_j, col] = atom_x1[0, col]
 
-        # finished processing this bin. Now, return and process
-        # another bin until everything is ready.
+            # x2 has k-1 columns
+            for col in range(k):
+                x2[atom_j, col] = atom_x2[0, col]
+
+    # finished processing this bin. Now, return and process
+    # another bin until everything is ready.
 
     return x1, x2

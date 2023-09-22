@@ -112,6 +112,36 @@ def cdist_numba(A, B):
 
 
 @nb.njit(fastmath=True)
+def pdist_numba(A):
+    """Optimized distance matrix calculation using numba.
+
+    Arguments:
+        A (np.ndarray): an (N, d) matrix
+
+    Returns:
+        dm (np.ndarray): an (N, N) matrix with the distances
+    """
+    N, d = A.shape
+    dm = np.empty((N, N), dtype=A.dtype)
+    for i in range(N):
+        dm[i, i] = 0
+
+    # compute only the off-diagonal terms
+    for i in range(N):
+        for j in range(i + 1, N):
+            dist = 0
+            for k in range(d):
+                diff = A[i, k] - A[j, k]
+                dist += diff * diff
+
+            dist = np.sqrt(dist)
+            dm[i, j] = dist
+            dm[j, i] = dist
+
+    return dm
+
+
+@nb.njit(fastmath=True)
 def argsort_numba(X: np.ndarray, sort_max: int = -1) -> np.ndarray:
     M, N = X.shape
     if sort_max > 0:
@@ -125,3 +155,38 @@ def argsort_numba(X: np.ndarray, sort_max: int = -1) -> np.ndarray:
             sorter[i, j] = line_sorter[j]
 
     return sorter
+
+
+@nb.njit(fastmath=True)
+def inverse_3d(matrix: np.ndarray):
+    bx = np.cross(matrix[1], matrix[2])
+    by = np.cross(matrix[2], matrix[0])
+    bz = np.cross(matrix[0], matrix[1])
+
+    det = matrix[0, 0] * bx[0] + matrix[0, 1] * bx[1] + matrix[0, 2] * bx[2]
+
+    inv = np.empty((3, 3))
+    for i in range(3):
+        inv[i, 0] = bx[i] / det
+        inv[i, 1] = by[i] / det
+        inv[i, 2] = bz[i] / det
+
+    return inv
+
+
+@nb.njit(fastmath=True)
+def mat_vec_mul_3d(matrix: np.ndarray, vector: np.ndarray):
+    v0 = matrix[0, 0] * vector[0] + matrix[0, 1] * vector[1] + matrix[0, 2] * vector[2]
+    v1 = matrix[1, 0] * vector[0] + matrix[1, 1] * vector[1] + matrix[1, 2] * vector[2]
+    v2 = matrix[2, 0] * vector[0] + matrix[2, 1] * vector[1] + matrix[2, 2] * vector[2]
+
+    return np.array([v0, v1, v2])
+
+
+@nb.njit(fastmath=True)
+def vec_mat_mul_3d(vector: np.ndarray, matrix: np.ndarray):
+    v0 = matrix[0, 0] * vector[0] + matrix[1, 0] * vector[1] + matrix[2, 0] * vector[2]
+    v1 = matrix[0, 1] * vector[0] + matrix[1, 1] * vector[1] + matrix[2, 1] * vector[2]
+    v2 = matrix[0, 2] * vector[0] + matrix[1, 2] * vector[1] + matrix[2, 2] * vector[2]
+
+    return np.array([v0, v1, v2])
