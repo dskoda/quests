@@ -112,11 +112,13 @@ def cdist_numba(A, B):
 
 
 @nb.njit(fastmath=True)
-def argsort_numba(X: np.ndarray) -> np.ndarray:
+def argsort_numba(X: np.ndarray, sort_max: int = -1) -> np.ndarray:
     M, N = X.shape
+    if sort_max > 0:
+        M = sort_max
 
     # Adapting argsort
-    sorter = np.empty(X.shape, dtype=np.int64)
+    sorter = np.empty((M, N), dtype=np.int64)
     for i in range(M):
         line_sorter = np.argsort(X[i])
         for j in range(N):
