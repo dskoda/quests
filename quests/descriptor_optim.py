@@ -82,30 +82,29 @@ def descriptor_x2(
         # first compute the cross distances
         for j in range(jmax):
             atom_j = sorter[i, j + 1]
+            rij = dm[i, atom_j]
+            wij = descriptor_weight(rij, cutoff)
 
-            for l in range(jmax):
+            for l in range(j + 1, jmax):
                 atom_l = sorter[i, l + 1]
-
-                rij = dm[i, atom_j]
-                wij = descriptor_weight(rij, cutoff)
-
                 ril = dm[i, atom_l]
                 wil = descriptor_weight(ril, cutoff)
 
-                rjl[j, l] = (wij * wil) / (dm[atom_j, atom_l] + eps)
+                x2_jl = (wij * wil) / (dm[atom_j, atom_l] + eps)
+                rjl[j, l] = x2_jl
+                rjl[l, j] = x2_jl
 
-        # then sort the matrix and remove the case where j == l
-        # that corresponds to the largest rjl
         r_sort = np.sort(rjl)
 
-        # now compute the mean and sorts largest first in x2
-        for l in range(k - 1):
+        # now compute the mean over rows
+        # and sorts largest first in x2
+        for l in range(1, k):
             _sum = 0.0
             for j in range(k):
                 _sum += r_sort[j, l]
 
             # larger first
-            x2[i, k - 2 - l] = _sum / k
+            x2[i, k - 1 - l] = _sum / k
 
     return x2
 

@@ -178,7 +178,7 @@ def local_descriptor(r_ij: np.ndarray, D_ij: np.ndarray, k: int, weight: Callabl
 
     r_jk = cdist(vecs, vecs)
     x2m = numba_inv_dm(r_jk, w)
-    x2 = np.fliplr(np.sort(x2m, axis=1))[:, 1:].mean(0)
+    x2 = np.fliplr(np.sort(x2m, axis=1))[:, 1:].sum(0) / k
 
     if len(x1) < k:
         padding = k - len(x1)
