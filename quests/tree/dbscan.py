@@ -7,9 +7,9 @@ from pykdtree.kdtree import KDTreeFinder
 
 
 class FinderDBScan(FinderNeighbors):
-    def __init__(self, x: np.ndarray, **kwargs):
+    def __init__(self, x: np.ndarray, eps: float 0.03, min_samples: int = 5, **kwargs):
         self.x = x
-        self.db = DBSCAN(eps=0.03, min_samples=5)
+        self.db = DBSCAN(eps=eps, min_samples=min_samples, **kwargs)
         self.finder = None
 
     def build(self):
