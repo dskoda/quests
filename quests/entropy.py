@@ -1,153 +1,46 @@
-from typing import Callable
-from typing import Union
+import math
 
+import numba as nb
 import numpy as np
-from scipy.special import logsumexp
 
-from .distance import batch_distances
-from .finders import TreeNeighbors
-
-
-class EntropyEstimator:
-    def __init__(
-        self,
-        x: np.ndarray,
-        h: float = 0.015,
-        nbrs: int = 100,
-        finder: NeighborsFinder = "pykdtree",
-        kernel: str = "gaussian",
-        metric: str = "euclidean",
-    ):
-        """Initializes the kernel-based entropy estimator.
-
-        Parameters:
-        -----------
-            x (np.ndarray): reference points to be used for the KDE.
-            h (float): bandwidth of the KDE.
-            nbrs (int): number of nearest-neighbors to use when
-                computing the overlap between points in the distribution.
-                More neighbors increase the accuracy, but also add
-                computational overhead.
-        """
-        self.x = x
-        self.n = len(x)
-        self.h = h
-        self.nbrs = nbrs
-        self.finder = self._get_finder(finder, x)
-        self.kernel = self._get_kernel(kernel)
-        self.metric = metric
-
-    def _get_finder(self, finder: Union[str, TreeNeighbors], x: np.ndarray) -> Callable:
-        if finder is None:
-            return None
-
-        if isinstance(finder, TreeNeighbors):
-            return finder
-
-        if not isinstance(finder, str):
-            raise ValueError(f"Tree type {type(finder)} not recognized")
-
-        name = finder.lower()
-
-        if name == "pykdtree":
-            from .finder.pykdtree import KDTreeFinder
-            finder = KDTreeFinder(x)
-
-        else:
-            raise ValueError(f"Tree name {name} not recognized")
-
-        finder.build()
-        return finder
-
-    def _get_kernel(self, name: str) -> Callable:
-        name = name.lower()
-        if name == "epanechnikov":
-            return epanechnikov_kernel
-        
-        elif name == "gaussian":
-            return gaussian_kernel
-
-        else:
-            raise ValueError(f"Kernel {name} not supported")
-
-    def get_distances(self, x: np.ndarray) -> np.ndarray:
-        if self.finder is not None:
-            return self._get_distances_finder(x)
-
-        return self._get_distances_batch(x)
-
-    def _get_distances_finder(self, x: np.ndarray) -> np.ndarray:
-        return self.finder.query(x, k=self.nbrs)
-
-    def _get_distances_batch(self, x: np.ndarray) -> np.ndarray:
-        return batch_distances(x, self.x, metric=self.metric)
-
-    def zij(self, x: np.ndarray) -> np.ndarray:
-        """constructs the distance matrices"""
-        dij = self.get_distances(x)
-        if isinstance(dij, np.ndarray):
-            return dij / self.h
-
-        return [
-            d / self.h
-            for d in dij
-        ]
-
-    def entropy(self, x: np.ndarray) -> float:
-        """Computes the entropy of the points with respect to the
-            initial dataset.
-
-        Arguments:
-        ----------
-            x (np.ndarray): points where the entropy will be computed.
-
-        Returns:
-        --------
-            entropy (float): total entropy of the system.
-        """
-        logp = self.delta_entropy(x)
-        logn = np.log(self.n)
-
-        return logn + logp.mean()
-
-    @property
-    def dataset_entropy(self) -> float:
-        """Computes the entropy of the initial dataset.
-
-        Returns:
-        --------
-            entropy (float): total entropy of the system.
-        """
-        return self.entropy(self.x)
-
-    def delta_entropy(self, x: np.ndarray) -> np.ndarray:
-        """Computes the pointwise entropy of the points `x` with respect
-            to the initial dataset.
-
-        Arguments:
-        ----------
-            x (np.ndarray): points where the entropy will be computed.
-
-        Returns:
-        --------
-            entropy (np.ndarray): total entropy of the system.
-        """
-        z = self.zij(x)
-        logp = self.kernel(z)
-        return -logp
+from .matrix import cdist
+from .matrix import logsumexp
 
 
-def epanechnikov_kernel(z: np.ndarray, eps: float = 1e-15):
-    """Computes the Epachenikov kernel for normalized values z,
-        z_i = (x - x_i) / h,
-        where z is a matrix (n, nbrs), with n being the number of
-        points evaluated at once and nbrs the number of neighbors.
+@nb.njit(fastmath=True, parallel=True)
+def perfect_entropy(x: np.ndarray, h: float = 0.015, batch_size: int = 2000):
+    """Computes the perfect entropy of a dataset using a batch distance
+        calculation. This is necessary because the full distance matrix
+        often does not fit in the memory for a big dataset. This function
+        can be SLOW, despite the optimization of the computation, as it
+        does not approximate the results.
+
+    Arguments:
+        x (np.ndarray): an (N, d) matrix with the descriptors
+        h (int): bandwidth for the Gaussian kernel
+        batch_size (int): maximum batch size to consider when
+            performing a distance calculation.
+
+    Returns:
+        entropy (float): entropy of the dataset given by `x`.
     """
+    N = x.shape[0]
+    max_step = math.ceil(N / batch_size)
 
-    u = z * z
-    k = 1 - u.clip(max=1)
-    return np.log(k.sum(axis=-1) + eps)
+    entropies = np.empty(N, dtype=x.dtype)
 
+    for step in nb.prange(0, max_step):
+        i = step * batch_size
+        imax = min(i + batch_size, N)
+        batch = x[i:imax]
 
-def gaussian_kernel(z: np.ndarray):
-    return logsumexp(-(z**2) / 2, axis=-1)
+        d = cdist(batch, x)
+
+        # computation of the entropy
+        z = d / h
+        entropy = logsumexp(-0.5 * (z**2))
+
+        for j in range(i, imax):
+            entropies[j] = entropy[j - i]
+
+    return np.log(N) - np.mean(entropies)

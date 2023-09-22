@@ -1,189 +1,339 @@
-from typing import Callable
-from typing import List
-
-import multiprocess as mp
-import numba
+import numba as nb
 import numpy as np
-from ase import Atoms
-from matscipy.neighbours import neighbour_list as nbrlist
-from scipy.spatial.distance import cdist
+from numba import types
+from numba.typed import Dict
+from numba.typed import List
 
-from .batch import chunks
-from .batch import split_array
+from .matrix import argsort
+from .matrix import cdist
+from .matrix import inverse_3d
+from .matrix import pdist
+from .matrix import stack_xyz
 
-
-class QUESTS:
-    def __init__(
-        self,
-        cutoff: float = 5.0,
-        k: int = 8,
-        weight_fn: Callable = None,
-        interaction_cutoff: float = None,
-    ):
-        """Class for generating the sorted distance lists for atomic
-            environments using k-nearest neighbors. The class uses
-            fast method to compute the descriptors for the whole
-            structure at once by batching the calculations in arrays.
-
-        Parameters:
-        -----------
-            cutoff (float): maximum distance to consider two atoms
-                as neighbors when computing the neighbor list.
-            k (int): number of nearest neighbors to fix the length
-                of the descriptor.
-            weight_fn (callable): function that smooths out the distances
-                to make the descriptor continuous.
-        """
-        self.cutoff = float(cutoff)
-        self.k = k
-        if interaction_cutoff is None:
-            interaction_cutoff = 0.75 * self.cutoff
-
-        if weight_fn is None:
-            self.weight = lambda r: smooth_weight(r, interaction_cutoff)
-
-        elif isinstance(weight_fn, Callable):
-            self.weight = weight_fn
-
-    def get_neighborlist(self, atoms: Atoms, quantities: str = "ijD"):
-        return nbrlist(quantities, atoms, cutoff=self.cutoff)
-
-    def get_descriptors_serial(self, atoms: Atoms):
-        return descriptors_serial(
-            atoms, k=self.k, cutoff=self.cutoff, weight=self.weight
-        )
-
-    def get_descriptors_parallel(self, atoms: Atoms, jobs: int = 1):
-        """Computes the (r, d) distances for all atoms in the structure.
-
-        Arguments:
-        -----------
-            atoms (ase.Atoms): structure to be analyzed
-
-        Returns:
-        --------
-            x1 (np.ndarray): radial distances for each atomic environment
-            x2 (np.ndarray): propagated radial distances for environments
-        """
-        if jobs == 1 or len(atoms) == 1:
-            return self.get_descriptors_serial(atoms)
-
-        i, d, D = self.get_neighborlist(atoms, "idD")
-
-        subarrays = split_array(i)
-        subds = [(d[subarr], D[subarr]) for subarr in subarrays]
-        subsets = chunks(subds, len(subds) // jobs)
-
-        def worker_fn(subset):
-            return [
-                local_descriptor(d, D, k=self.k, weight=self.weight) for d, D in subset
-            ]
-
-        with mp.Pool(jobs) as p:
-            results = p.map(worker_fn, subsets)
-
-        if len(results) == 1:
-            _x1, _x2 = results
-            x1 = np.array(_x1).reshape(1, -1)
-            x2 = np.array(_x2).reshape(1, -1)
-            return x1, x2
-
-        x1 = np.stack([_x1 for res in results for _x1, _x2 in res])
-        x2 = np.stack([_x2 for res in results for _x1, _x2 in res])
-
-        return x1, x2
-
-    def get_all_descriptors(self, dset: List[Atoms], jobs: int = 1):
-        if jobs > 1:
-            return self.get_all_descriptors_parallel(dset, jobs)
-
-        x1, x2 = [], []
-        for at in dset:
-            _x1, _x2 = self.get_descriptors_parallel(at, jobs=jobs)
-            x1.append(_x1)
-            x2.append(_x2)
-
-        return np.concatenate(x1, axis=0), np.concatenate(x2, axis=0)
-
-    def get_all_descriptors_parallel(self, dset: List[Atoms], jobs: int = 1):
-        if len(dset) == 1 or jobs == 1:
-            return self.get_all_descriptors(dset, jobs=1)
-
-        def worker_fn(atoms):
-            return descriptors_serial(
-                atoms, k=self.k, cutoff=self.cutoff, weight=self.weight
-            )
-
-        with mp.Pool(jobs) as p:
-            results = p.map(worker_fn, dset)
-
-        if len(results) == 1:
-            _x1, _x2 = results
-            x1 = np.array(_x1).reshape(1, -1)
-            x2 = np.array(_x2).reshape(1, -1)
-            return x1, x2
-
-        x1 = np.concatenate([_x1 for _x1, _x2 in results], axis=0)
-        x2 = np.concatenate([_x2 for _x1, _x2 in results], axis=0)
-
-        return x1, x2
+IntList = types.ListType(types.int64)
+FloatArrayList = types.Array(types.float64, 1, "C")
 
 
-def smooth_weight(r, cutoff):
-    z = r.clip(max=cutoff) / cutoff
+@nb.njit(fastmath=True)
+def descriptor_weight(r: float, cutoff: float):
+    if r > cutoff:
+        r = cutoff
+
+    z = r / cutoff
     return (1 - z**2) ** 2
 
 
-@numba.jit(nopython=True, cache=True)
-def numba_inv_dm(dm, w, eps=1e-15):
-    n = dm.shape[0]
-    new = np.zeros((n, n))
-    for i in range(n):
-        for j in range(n):
-            new[i, j] = w[i] * w[j] / (dm[i, j] + eps)
+@nb.njit(fastmath=True)
+def descriptor_x1(
+    dm: np.ndarray,
+    sorter: np.ndarray,
+    k: int = 32,
+    cutoff: float = 5.0,
+    max_rows: int = -1,
+) -> np.ndarray:
+    N = dm.shape[0]
+    if max_rows <= 0:
+        max_rows = N
 
-    return new
+    # Lazy initialization of the descriptor matrix
+    if N > k:
+        x1 = np.empty((max_rows, k))
+        jmax = k
+    else:
+        x1 = np.full((max_rows, k), fill_value=0.0)
+        jmax = N - 1
+
+    # Computes the descriptor x1 in parallel
+    for i in range(max_rows):
+        for j in range(jmax):
+            atom_j = sorter[i, j + 1]
+            rij = dm[i, atom_j]
+            wij = descriptor_weight(rij, cutoff)
+            x1[i, j] = wij / rij
+
+    return x1
 
 
-def descriptors_serial(atoms: Atoms, k: int, cutoff: float, weight: Callable):
-    i, r_ij, D_ij = nbrlist("idD", atoms, cutoff=cutoff)
+@nb.njit(fastmath=True)
+def descriptor_x2(
+    dm: np.ndarray,
+    sorter: np.ndarray,
+    k: int = 32,
+    cutoff: float = 5.0,
+    eps: float = 1e-15,
+    max_rows: int = -1,
+) -> np.ndarray:
+    N = dm.shape[0]
+    if max_rows <= 0:
+        max_rows = N
 
-    if len(r_ij) == 0:
-        return np.zeros((1, k)), np.zeros((1, k - 1))
+    # Lazy initialization of the matrix
+    if N > k:
+        x2 = np.empty((max_rows, k - 1))
+        jmax = k
+    else:
+        x2 = np.full((max_rows, k - 1), fill_value=0.0)
+        jmax = N - 1
 
-    subarrays = split_array(i)
-    results = [
-        local_descriptor(r_ij[_a], D_ij[_a], k=k, weight=weight) for _a in subarrays
-    ]
+    # Computes the second descriptor
+    for i in range(max_rows):
+        rjl = np.full((k, k), fill_value=0.0)
 
-    if len(results) == 1:
-        _x1, _x2 = results
-        x1 = np.array(_x1).reshape(1, -1)
-        x2 = np.array(_x2).reshape(1, -1)
-        return x1, x2
+        # first compute the cross distances
+        for j in range(jmax):
+            atom_j = sorter[i, j + 1]
+            rij = dm[i, atom_j]
+            wij = descriptor_weight(rij, cutoff)
 
-    x1 = np.stack([_x1 for _x1, _x2 in results])
-    x2 = np.stack([_x2 for _x1, _x2 in results])
+            for l in range(j + 1, jmax):
+                atom_l = sorter[i, l + 1]
+                ril = dm[i, atom_l]
+                wil = descriptor_weight(ril, cutoff)
 
+                x2_jl = (wij * wil) / (dm[atom_j, atom_l] + eps)
+                rjl[j, l] = x2_jl
+                rjl[l, j] = x2_jl
+
+        r_sort = np.sort(rjl)
+
+        # now compute the mean over rows
+        # and sorts largest first in x2
+        for l in range(1, k):
+            _sum = 0.0
+            for j in range(k):
+                _sum += r_sort[j, l]
+
+            # larger first
+            x2[i, k - 1 - l] = _sum / k
+
+    return x2
+
+
+@nb.njit(fastmath=True)
+def descriptor_nopbc(
+    xyz: np.ndarray,
+    k: int = 32,
+    cutoff: float = 5.0,
+    eps: float = 1e-15,
+) -> np.ndarray:
+    dm = pdist(xyz)
+    sorter = argsort(dm)
+
+    x1 = descriptor_x1(dm, sorter, k, cutoff)
+    x2 = descriptor_x2(dm, sorter, k, cutoff)
     return x1, x2
 
 
-def local_descriptor(r_ij: np.ndarray, D_ij: np.ndarray, k: int, weight: Callable):
-    sorter = np.argsort(r_ij)[:k]
-    dist = r_ij[sorter]
-    vecs = D_ij[sorter]
+@nb.njit(fastmath=True)
+def get_num_bins(cell: np.ndarray, cutoff: float):
+    bx = np.cross(cell[1], cell[2])
+    by = np.cross(cell[2], cell[0])
+    bz = np.cross(cell[0], cell[1])
 
-    w = weight(dist)
-    x1 = w / dist
+    bx_norm = np.sqrt(bx[0] * bx[0] + bx[1] * bx[1] + bx[2] * bx[2])
+    by_norm = np.sqrt(by[0] * by[0] + by[1] * by[1] + by[2] * by[2])
+    bz_norm = np.sqrt(bz[0] * bz[0] + bz[1] * bz[1] + bz[2] * bz[2])
 
-    r_jk = cdist(vecs, vecs)
-    x2m = numba_inv_dm(r_jk, w)
-    x2 = np.fliplr(np.sort(x2m, axis=1))[:, 1:].sum(0) / k
+    volume = np.dot(cell[0], bx)
 
-    if len(x1) < k:
-        padding = k - len(x1)
-        zeros = np.zeros((padding))
-        x1 = np.concatenate([x1, zeros])
-        x2 = np.concatenate([x2, zeros])
+    lx = volume / bx_norm
+    ly = volume / by_norm
+    lz = volume / bz_norm
+    lengths = np.array([lx, ly, lz])
+
+    nx = max(np.floor(lx / cutoff), 1)
+    ny = max(np.floor(ly / cutoff), 1)
+    nz = max(np.floor(lz / cutoff), 1)
+
+    n_bins = np.array([nx, ny, nz], dtype=np.int64)
+    n_nbr_bins = np.ceil((cutoff * n_bins) / lengths).astype(np.int64)
+
+    return n_bins, n_nbr_bins
+
+
+@nb.njit(fastmath=True)
+def to_contiguous_index(nx, ny, nz, n_bins):
+    return nx + ny * n_bins[0] + nz * n_bins[0] * n_bins[1]
+
+
+@nb.njit(fastmath=True)
+def to_tuple_index(idx, n_bins):
+    nz = idx // (n_bins[0] * n_bins[1])
+    idx -= nz * n_bins[0] * n_bins[1]
+
+    ny = idx // (n_bins[0])
+    idx -= ny * n_bins[0]
+
+    nx = idx
+    return nx, ny, nz
+
+
+@nb.njit()
+def create_bin_dict(bins: np.ndarray, max_bins: int):
+    # initializes the list of atoms per bin
+    bin_dict = Dict.empty(key_type=types.int64, value_type=IntList)
+    for i in range(max_bins):
+        bin_dict[i] = List.empty_list(types.int64)
+
+    # create the linked list
+    for atom_i in range(len(bins)):
+        atom_bin = bins[atom_i]
+        bin_dict[atom_bin].append(atom_i)
+
+    return bin_dict
+
+
+@nb.njit(fastmath=True)
+def wrap_pbc(xyz: np.ndarray, cell: np.ndarray):
+    inv = inverse_3d(cell)
+    frac_coords = np.dot(xyz, inv)
+    frac_coords = frac_coords % 1.0
+    cart_coords = np.dot(frac_coords, cell)
+    return frac_coords, cart_coords
+
+
+@nb.njit(fastmath=True)
+def bin_atoms(xyz: np.ndarray, cell: np.ndarray, n_bins: np.ndarray):
+    """Separates the atoms into bins by splitting the `cell` into
+    `n_bins` depending on the vector directions.
+    """
+    # make sure the coordinates are in fractional ones first
+    frac_coords, cart_coords = wrap_pbc(xyz, cell)
+
+    # each direction will be split in bins
+    bin_size = 1.0 / n_bins
+
+    # bins the atoms using vectorized approaches
+    xyz_bins = (frac_coords // bin_size).astype(np.int64)
+    bins = to_contiguous_index(xyz_bins[:, 0], xyz_bins[:, 1], xyz_bins[:, 2], n_bins)
+
+    return bins, cart_coords
+
+
+@nb.njit(fastmath=True, parallel=True)
+def descriptor_pbc(
+    xyz: np.ndarray,
+    cell: np.ndarray,
+    k: int = 32,
+    cutoff: float = 5.0,
+    eps: float = 1e-15,
+) -> np.ndarray:
+    N = xyz.shape[0]
+
+    n_bins, n_nbr_bins = get_num_bins(cell, cutoff)
+
+    # this is how many bins we will have to explore to make sure we get
+    # all atoms within the cutoff
+    delta_x, delta_y, delta_z = n_nbr_bins
+
+    # this is the number of bins we will partition the existing cell into
+    n_bins_x, n_bins_y, n_bins_z = n_bins
+
+    bins, cart_coords = bin_atoms(xyz, cell, n_bins)
+
+    max_bins = np.prod(n_bins)
+    bin_dict = create_bin_dict(bins, max_bins)
+
+    # initializes the descriptors
+    x1 = np.full((N, k), fill_value=0.0)
+    x2 = np.full((N, k - 1), fill_value=0.0)
+
+    # now we can compute the descriptors by looping over bins
+    # this should be computed in parallel, so we simply use nb.prange
+    # to separate this into different threads
+    for i in nb.prange(max_bins):
+        # this identifies the bin we are at
+        ix, iy, iz = to_tuple_index(i, n_bins)
+
+        # find the positions of the atoms within the cell
+        atoms = bin_dict[i]
+        n_atoms_bin = len(atoms)
+
+        # if the cell does not contain atoms, stop
+        if n_atoms_bin == 0:
+            continue
+
+        # bin_xyz is the list of all positions within and adjacent
+        # to the bin up to the cutoff
+        bin_xyz = List.empty_list(FloatArrayList)
+        nbrs_xyz = List.empty_list(FloatArrayList)
+
+        # we start with the positions within the bin
+        for at in atoms:
+            bin_xyz.append(cart_coords[at])
+            nbrs_xyz.append(cart_coords[at])
+
+        # then, we explore all bins adjacent to the current bin
+        # within the cutoff
+        for dx in range(-delta_x, delta_x + 1):
+            shift_dx, cell_dx = np.divmod(ix + dx, n_bins_x)
+
+            for dy in range(-delta_y, delta_y + 1):
+                shift_dy, cell_dy = np.divmod(iy + dy, n_bins_y)
+
+                for dz in range(-delta_z, delta_z + 1):
+                    shift_dz, cell_dz = np.divmod(iz + dz, n_bins_z)
+
+                    # do not double count the main positions
+                    if dx == 0 and dy == 0 and dz == 0:
+                        continue
+
+                    # total shift due to periodic boundary conditions
+                    shift = shift_dx * cell[0] + shift_dy * cell[1] + shift_dz * cell[2]
+
+                    # finding which bin we are exploring now
+                    nbrs_i = to_contiguous_index(cell_dx, cell_dy, cell_dz, n_bins)
+
+                    # now appends all shifted positions of atoms within
+                    # this neighboring bin
+                    for atom_j in bin_dict[nbrs_i]:
+                        nbrs_xyz.append(cart_coords[atom_j] + shift)
+
+        # now concatenate all positions to obtain all atoms
+        # relevant for the bin
+        bin_xyz = stack_xyz(bin_xyz)
+        nbrs_xyz = stack_xyz(nbrs_xyz)
+
+        # compute the distance between the bins and all neighbors
+        dm = cdist(bin_xyz, nbrs_xyz)
+
+        # do not sort neighbors outside of the bin to save time
+        sorter = argsort(dm)
+
+        # loops over the atoms in the bin to avoid computing the 
+        # distance matrix between all neighbors
+        for j in range(n_atoms_bin):
+            atom_j = atoms[j]
+
+            # get the positions from the neighbors
+            atom_xyz = np.empty((k + 1, 3))
+            for nbr in range(k + 1):
+                nbr_idx = sorter[j, nbr]
+                atom_xyz[nbr] = nbrs_xyz[nbr_idx]
+
+            # computes the distance matrix only for the atom and its
+            # k-nearest neighbors
+            atom_dm = pdist(atom_xyz)
+
+            # the new distance matrix is already sorted, so the new
+            # sorter is basically an arange
+            atom_sorter = np.empty((1, k + 1), dtype=sorter.dtype)
+            for v in range(k + 1):
+                atom_sorter[0, v] = v
+
+            # compute the descriptors only for atoms within the bin
+            atom_x1 = descriptor_x1(atom_dm, atom_sorter, k, cutoff, max_rows=1)
+            atom_x2 = descriptor_x2(atom_dm, atom_sorter, k, cutoff, max_rows=1)
+
+            # x1 has k columns
+            for col in range(k):
+                x1[atom_j, col] = atom_x1[0, col]
+
+            # x2 has k-1 columns
+            for col in range(k):
+                x2[atom_j, col] = atom_x2[0, col]
+
+    # finished processing this bin. Now, return and process
+    # another bin until everything is ready.
 
     return x1, x2
