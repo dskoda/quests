@@ -6,9 +6,9 @@ import numpy as np
 from ase.io import read
 
 from .log import logger
-from quests.descriptor import QUESTS
-from quests.entropy import EntropyEstimator
-from quests.finders.pykdtree import KDTreeFinder
+from quests.flex.descriptor import QUESTS
+from quests.flex.entropy import EntropyEstimator
+from quests.flex.finders.pykdtree import KDTreeFinder
 
 
 @click.command("dentropy")

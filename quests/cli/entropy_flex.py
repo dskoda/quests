@@ -7,26 +7,40 @@ from ase.io import read
 
 from .log import format_time
 from .log import logger
-from quests.descriptor import descriptor_nopbc
-from quests.descriptor import descriptor_pbc
-from quests.entropy import perfect_entropy
+from quests.flex.descriptor import QUESTS
+from quests.flex.entropy import EntropyEstimator
 
 
-@click.command("entropy")
+@click.command("entropy_flex")
 @click.argument("file", required=1)
 @click.option(
     "-c",
     "--cutoff",
     type=float,
+    default=6.0,
+    help="Cutoff (in Å) for computing the neighbor list (default: 6.0)",
+)
+@click.option(
+    "-r",
+    "--cutoff_interaction",
+    type=float,
     default=5.0,
-    help="Cutoff (in Å) for computing the neighbor list (default: 5.0)",
+    help="Cutoff (in Å) for considering interactions between atoms \
+            (default: 5.0)",
 )
 @click.option(
     "-k",
-    "--nbrs",
+    "--nbrs_descriptor",
     type=int,
     default=32,
     help="Number of neighbors when creating the descriptor (default: 32)",
+)
+@click.option(
+    "-t",
+    "--nbrs_finder",
+    type=int,
+    default=100,
+    help="Number of neighbors when computing the kernel (default: 100)",
 )
 @click.option(
     "-b",
@@ -34,6 +48,12 @@ from quests.entropy import perfect_entropy
     type=float,
     default=0.015,
     help="Bandwidth when computing the kernel (default: 0.015)",
+)
+@click.option(
+    "--kernel",
+    type=str,
+    default="gaussian",
+    help="Name of the kernel to use when computing the delta entropy (default: gaussian)",
 )
 @click.option(
     "-s",
@@ -47,8 +67,8 @@ from quests.entropy import perfect_entropy
     "-j",
     "--jobs",
     type=int,
-    default=None,
-    help="Number of jobs to distribute the calculation in (default: all)",
+    default=1,
+    help="Number of jobs to distribute the calculation in (default: 1)",
 )
 @click.option(
     "-o",
@@ -58,10 +78,12 @@ from quests.entropy import perfect_entropy
     help="path to the json file that will contain the output\
             (default: no output produced)",
 )
-def entropy(
+def entropy_flex(
     file,
     cutoff,
-    nbrs,
+    cutoff_interaction,
+    nbrs_descriptor,
+    nbrs_finder,
     bandwidth,
     kernel,
     sample,
@@ -69,6 +91,12 @@ def entropy(
     output,
 ):
     dset = read(file, index=":")
+
+    q = QUESTS(
+        cutoff=cutoff,
+        k=nbrs_descriptor,
+        interaction_cutoff=cutoff_interaction,
+    )
 
     start_time = time.time()
     x1, x2 = q.get_all_descriptors_parallel(dset, jobs=jobs)

@@ -5,8 +5,8 @@ import click
 from ase.io import read
 
 from .log import logger
-from quests.descriptor import QUESTS
-from quests.distance import compare_datasets
+from quests.flex.descriptor import QUESTS
+from quests.flex.distance import compare_datasets
 
 
 @click.command("compare")
