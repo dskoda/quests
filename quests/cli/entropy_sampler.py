@@ -47,7 +47,7 @@ def sample_indices(size: int, n: int):
 )
 @click.option(
     "-t",
-    "--nbrs_tree",
+    "--nbrs_finder",
     type=int,
     default=100,
     help="Number of neighbors when computing the kernel (default: 100)",
@@ -106,7 +106,7 @@ def entropy_sampler(
     cutoff,
     cutoff_interaction,
     nbrs_descriptor,
-    nbrs_tree,
+    nbrs_finder,
     bandwidth,
     kernel,
     sample,
@@ -172,7 +172,7 @@ def entropy_sampler(
         H = EntropyEstimator(
             xsample,
             h=bandwidth,
-            nbrs=nbrs_tree,
+            nbrs=nbrs_finder,
             kernel=kernel,
         )
 
@@ -187,7 +187,7 @@ def entropy_sampler(
             "cutoff": cutoff,
             "cutoff_interaction": cutoff_interaction,
             "nbrs_descriptor": nbrs_descriptor,
-            "nbrs_tree": nbrs_tree,
+            "nbrs_finder": nbrs_finder,
             "bandwidth": bandwidth,
             "sample": sample,
             "num_runs": num_runs,

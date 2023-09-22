@@ -5,7 +5,7 @@ import numpy as np
 from scipy.special import logsumexp
 
 from .distance import batch_distances
-from .tree import TreeNeighbors
+from .finder import TreeNeighbors
 
 
 class EntropyEstimator:
@@ -14,7 +14,7 @@ class EntropyEstimator:
         x: np.ndarray,
         h: float = 0.015,
         nbrs: int = 100,
-        tree: TreeNeighbors = "pykdtree",
+        finder: NeighborsFinder = "pykdtree",
         kernel: str = "gaussian",
         metric: str = "euclidean",
     ):
@@ -33,31 +33,31 @@ class EntropyEstimator:
         self.n = len(x)
         self.h = h
         self.nbrs = nbrs
-        self.tree = self._get_tree(tree, x)
+        self.finder = self._get_finder(finder, x)
         self.kernel = self._get_kernel(kernel)
         self.metric = metric
 
-    def _get_tree(self, tree: Union[str, TreeNeighbors], x: np.ndarray) -> Callable:
-        if tree is None:
+    def _get_finder(self, finder: Union[str, TreeNeighbors], x: np.ndarray) -> Callable:
+        if finder is None:
             return None
 
-        if isinstance(tree, TreeNeighbors):
-            return tree
+        if isinstance(finder, TreeNeighbors):
+            return finder
 
-        if not isinstance(tree, str):
-            raise ValueError(f"Tree type {type(tree)} not recognized")
+        if not isinstance(finder, str):
+            raise ValueError(f"Tree type {type(finder)} not recognized")
 
-        name = tree.lower()
+        name = finder.lower()
 
         if name == "pykdtree":
-            from .tree.pykdtree import TreePyKDTree
-            tree = TreePyKDTree(x)
+            from .finder.pykdtree import KDTreeFinder
+            finder = KDTreeFinder(x)
 
         else:
             raise ValueError(f"Tree name {name} not recognized")
 
-        tree.build()
-        return tree
+        finder.build()
+        return finder
 
     def _get_kernel(self, name: str) -> Callable:
         name = name.lower()
@@ -71,13 +71,13 @@ class EntropyEstimator:
             raise ValueError(f"Kernel {name} not supported")
 
     def get_distances(self, x: np.ndarray) -> np.ndarray:
-        if self.tree is not None:
-            return self._get_distances_tree(x)
+        if self.finder is not None:
+            return self._get_distances_finder(x)
 
         return self._get_distances_batch(x)
 
-    def _get_distances_tree(self, x: np.ndarray) -> np.ndarray:
-        return self.tree.query(x, k=self.nbrs)
+    def _get_distances_finder(self, x: np.ndarray) -> np.ndarray:
+        return self.finder.query(x, k=self.nbrs)
 
     def _get_distances_batch(self, x: np.ndarray) -> np.ndarray:
         return batch_distances(x, self.x, metric=self.metric)

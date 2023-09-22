@@ -37,7 +37,7 @@ from quests.entropy import EntropyEstimator
 )
 @click.option(
     "-t",
-    "--nbrs_tree",
+    "--nbrs_finder",
     type=int,
     default=100,
     help="Number of neighbors when computing the kernel (default: 100)",
@@ -83,7 +83,7 @@ def entropy(
     cutoff,
     cutoff_interaction,
     nbrs_descriptor,
-    nbrs_tree,
+    nbrs_finder,
     bandwidth,
     kernel,
     sample,
@@ -117,7 +117,7 @@ def entropy(
     H = EntropyEstimator(
         x,
         h=bandwidth,
-        nbrs=nbrs_tree,
+        nbrs=nbrs_finder,
         kernel=kernel,
     )
     end_time = time.time()
@@ -142,7 +142,7 @@ def entropy(
             "cutoff": cutoff,
             "cutoff_interaction": cutoff_interaction,
             "nbrs_descriptor": nbrs_descriptor,
-            "nbrs_tree": nbrs_tree,
+            "nbrs_finder": nbrs_finder,
             "bandwidth": bandwidth,
             "sample": sample,
             "jobs": jobs,

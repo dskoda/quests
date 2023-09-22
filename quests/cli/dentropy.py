@@ -8,7 +8,7 @@ from ase.io import read
 from .log import logger
 from quests.descriptor import QUESTS
 from quests.entropy import EntropyEstimator
-from quests.tree.pykdtree import TreePyKDTree
+from quests.finder.pykdtree import KDTreeFinder
 
 
 @click.command("dentropy")
@@ -38,7 +38,7 @@ from quests.tree.pykdtree import TreePyKDTree
 )
 @click.option(
     "-t",
-    "--nbrs_tree",
+    "--nbrs_finder",
     type=int,
     default=100,
     help="Number of neighbors when computing the kernel (default: 100)",
@@ -77,7 +77,7 @@ def dentropy(
     cutoff,
     cutoff_interaction,
     nbrs_descriptor,
-    nbrs_tree,
+    nbrs_finder,
     bandwidth,
     kernel,
     jobs,
@@ -109,13 +109,13 @@ def dentropy(
     logger(f"Descriptors for dataset 2 built in: {descriptor_time_2 * 1000: .2f} ms")
 
     start_time = time.time()
-    tree = TreePyKDTree(x)
-    tree.build()
+    finder = KDTreeFinder(x)
+    finder.build()
     H = EntropyEstimator(
         x,
         h=bandwidth,
-        nbrs=nbrs_tree,
-        tree=tree,
+        nbrs=nbrs_finder,
+        finder=finder,
         kernel=kernel,
     )
     end_time = time.time()
@@ -141,7 +141,7 @@ def dentropy(
             "cutoff": cutoff,
             "cutoff_interaction": cutoff_interaction,
             "nbrs_descriptor": nbrs_descriptor,
-            "nbrs_tree": nbrs_tree,
+            "nbrs_finder": nbrs_finder,
             "bandwidth": bandwidth,
             "kernel": kernel,
             "jobs": jobs,
