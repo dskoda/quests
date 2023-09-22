@@ -2,14 +2,19 @@ import json
 import time
 
 import click
+import numba as nb
 import numpy as np
 from ase.io import read
 
 from .log import format_time
 from .log import logger
-from quests.descriptor import descriptor_nopbc
-from quests.descriptor import descriptor_pbc
+from quests.descriptor import DEFAULT_CUTOFF
+from quests.descriptor import DEFAULT_K
+from quests.descriptor import get_descriptors
+from quests.entropy import DEFAULT_BANDWIDTH
+from quests.entropy import DEFAULT_BATCH
 from quests.entropy import perfect_entropy
+from quests.tools.time import Timer
 
 
 @click.command("entropy")
@@ -18,30 +23,22 @@ from quests.entropy import perfect_entropy
     "-c",
     "--cutoff",
     type=float,
-    default=5.0,
-    help="Cutoff (in Å) for computing the neighbor list (default: 5.0)",
+    default=DEFAULT_CUTOFF,
+    help=f"Cutoff (in Å) for computing the neighbor list (default: {DEFAULT_CUTOFF:.1f})",
 )
 @click.option(
     "-k",
     "--nbrs",
     type=int,
-    default=32,
-    help="Number of neighbors when creating the descriptor (default: 32)",
+    default=DEFAULT_K,
+    help=f"Number of neighbors when creating the descriptor (default: {DEFAULT_K})",
 )
 @click.option(
     "-b",
     "--bandwidth",
     type=float,
-    default=0.015,
-    help="Bandwidth when computing the kernel (default: 0.015)",
-)
-@click.option(
-    "-s",
-    "--sample",
-    type=int,
-    default=None,
-    help="If given, takes a sample of the environments before computing \
-            its entropy (default: uses the entire dataset)",
+    default=DEFAULT_BANDWIDTH,
+    help=f"Bandwidth when computing the kernel (default: {DEFAULT_BANDWIDTH})",
 )
 @click.option(
     "-j",
@@ -49,6 +46,13 @@ from quests.entropy import perfect_entropy
     type=int,
     default=None,
     help="Number of jobs to distribute the calculation in (default: all)",
+)
+@click.option(
+    "-b",
+    "--batch_size",
+    type=int,
+    default=DEFAULT_BATCH,
+    help=f"Size of the batches when computing the distances (default: {DEFAULT_BATCH})",
 )
 @click.option(
     "-o",
@@ -64,63 +68,35 @@ def entropy(
     nbrs,
     bandwidth,
     kernel,
-    sample,
     jobs,
+    batch_size,
     output,
 ):
+    if jobs is not None:
+        nb.set_num_threads(jobs)
+
     dset = read(file, index=":")
 
-    start_time = time.time()
-    x1, x2 = q.get_all_descriptors_parallel(dset, jobs=jobs)
-    x = np.concatenate([x1, x2], axis=1)
-    end_time = time.time()
-    descriptor_time = end_time - start_time
-
+    with Timer() as t:
+        x = get_descriptors(dset, k=nbrs, cutoff=cutoff)
+    descriptor_time = t.time
     logger(f"Descriptors built in: {format_time(descriptor_time)}")
 
-    if sample is not None:
-        if len(x) > sample:
-            i = np.random.randint(0, len(x), sample)
-            x = x[i]
-        else:
-            sample = len(x)
-
-    start_time = time.time()
-    H = EntropyEstimator(
-        x,
-        h=bandwidth,
-        nbrs=nbrs_finder,
-        kernel=kernel,
-    )
-    end_time = time.time()
-    build_time = end_time - start_time
-
-    logger(f"Tree/entropy built in: {format_time(build_time)}")
-
-    start_time = time.time()
-    entropy = H.dataset_entropy
-    end_time = time.time()
-    entropy_time = end_time - start_time
-
+    with Timer() as t:
+        entropy = perfect_entropy(x, h=bandwidth, batch_size=batch_size)
+    entropy_time = t.time
     logger(f"Entropy computed in: {format_time(entropy_time)}")
-    logger(
-        f"Dataset entropy: {entropy: .2f} (nats)"
-        + f"for a bandwidth {bandwidth: 0.3f}"
-    )
+
+    logger(f"Dataset entropy: {entropy: .2f} (nats)")
 
     if output is not None:
         results = {
             "file": file,
             "cutoff": cutoff,
-            "cutoff_interaction": cutoff_interaction,
-            "nbrs_descriptor": nbrs_descriptor,
-            "nbrs_finder": nbrs_finder,
             "bandwidth": bandwidth,
-            "sample": sample,
             "jobs": jobs,
             "entropy": entropy,
             "descriptor_time": descriptor_time,
-            "build_time": build_time,
             "entropy_time": entropy_time,
         }
 

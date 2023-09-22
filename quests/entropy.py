@@ -6,9 +6,14 @@ import numpy as np
 from .matrix import cdist
 from .matrix import logsumexp
 
+DEFAULT_BANDWIDTH = 0.015
+DEFAULT_BATCH = 2000
+
 
 @nb.njit(fastmath=True, cache=True)
-def perfect_entropy(x: np.ndarray, h: float = 0.015, batch_size: int = 2000):
+def perfect_entropy(
+    x: np.ndarray, h: float = DEFAULT_BANDWIDTH, batch_size: int = DEFAULT_BATCH
+):
     """Computes the perfect entropy of a dataset using a batch distance
         calculation. This is necessary because the full distance matrix
         often does not fit in the memory for a big dataset. This function
@@ -31,7 +36,12 @@ def perfect_entropy(x: np.ndarray, h: float = 0.015, batch_size: int = 2000):
 
 
 @nb.njit(fastmath=True, cache=True, parallel=True)
-def delta_entropy(ref: np.ndarray, test: np.ndarray, h: float = 0.015, batch_size: int = 2000):
+def delta_entropy(
+    ref: np.ndarray,
+    test: np.ndarray,
+    h: float = DEFAULT_BANDWIDTH,
+    batch_size: int = DEFAULT_BATCH,
+):
     """Computes the delta entropy of a dataset `test` using the dataset
         `ref` as a reference. The function uses a batch distance
         calculation. This is necessary because the full distance matrix

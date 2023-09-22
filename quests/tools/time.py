@@ -1,4 +1,5 @@
 from time import time
+from time import perf_counter
 from functools import wraps
 
 
@@ -28,3 +29,15 @@ def timetrack(log_fn):
         return wrapped_fn
 
     return _timetrack
+
+
+class Timer:
+    def __enter__(self):
+        self.start = perf_counter()
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.time = perf_counter() - self.start
+
+    def __str__(self):
+        return f'Time: {self.time:.3f} seconds'
