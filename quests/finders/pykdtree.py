@@ -3,7 +3,7 @@ import numpy as np
 from quests.batch import chunks
 
 from .base import NeighborsFinder
-from pykdtree.kdfinder import KDTree
+from pykdtree.kdtree import KDTree
 
 
 class KDTreeFinder(NeighborsFinder):

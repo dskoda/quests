@@ -8,7 +8,7 @@ from ase.io import read
 from .log import logger
 from quests.descriptor import QUESTS
 from quests.entropy import EntropyEstimator
-from quests.finder.pykdtree import KDTreeFinder
+from quests.finders.pykdtree import KDTreeFinder
 
 
 @click.command("dentropy")

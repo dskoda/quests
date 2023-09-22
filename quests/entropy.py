@@ -5,7 +5,7 @@ import numpy as np
 from scipy.special import logsumexp
 
 from .distance import batch_distances
-from .finder import TreeNeighbors
+from .finders import TreeNeighbors
 
 
 class EntropyEstimator:
