@@ -3,7 +3,7 @@ from quests.batch import split_array
 from sklearn.cluster import DBSCAN
 
 from .base import FinderNeighbors
-from pykdtree.kdtree import KDTreeFinder
+from pykdtree.kdfinder import KDTreeFinder
 
 
 class FinderDBScan(FinderNeighbors):
@@ -16,19 +16,19 @@ class FinderDBScan(FinderNeighbors):
         self.db.fit(self.x)
         labels = self.db.labels_
 
-        trees = {}
+        finders = {}
         for label in np.unique(labels):
             y = self.x[labels == label]
-            trees[label] = KDTreeFinder(y)
+            finders[label] = KDTreeFinder(y)
 
-        self.finders = trees
+        self.finders = finders
 
     def query(self, x: np.ndarray, k: int):
         labels, _ = self.db.predict(x)
 
         if x.shape[0] == 1:
-            tree = self.finders[labels[0]]
-            dij, _ = tree.query(x, k=k)
+            finder = self.finders[labels[0]]
+            dij, _ = finder.query(x, k=k)
             return dij
 
         sorter = np.argsort(labels)
@@ -40,8 +40,8 @@ class FinderDBScan(FinderNeighbors):
 
         distances = []
         for i, label in zip(split_array(labels), unique):
-            tree = self.finders[label]
-            dij, _ = tree.query(y[i], k=k)
+            finder = self.finders[label]
+            dij, _ = finder.query(y[i], k=k)
             distances.append(dij)
 
         distances = np.concatenate(distances)
