@@ -1,17 +1,23 @@
 import os
-import sys
 import json
 import time
+from typing import List
 
-from typing import Iterable
 import click
+import numba as nb
 import numpy as np
 from ase.io import read
+from ase import Atoms
 
+from .log import format_time
 from .log import logger
-from quests.descriptor import QUESTS
-from quests.entropy import EntropyEstimator
-from quests.pbc import add_box
+from quests.descriptor import DEFAULT_CUTOFF
+from quests.descriptor import DEFAULT_K
+from quests.descriptor import get_descriptors
+from quests.entropy import DEFAULT_BANDWIDTH
+from quests.entropy import DEFAULT_BATCH
+from quests.entropy import perfect_entropy
+from quests.tools.time import Timer
 
 
 def sample_indices(size: int, n: int):
@@ -21,49 +27,56 @@ def sample_indices(size: int, n: int):
     return np.random.randint(0, size, n)
 
 
+def get_sampling_fn(dset: List[Atoms], x: np.ndarray, sample, sample_dataset):
+    if not sample_dataset:
+        # sample environments
+        def sample_items():
+            indices = sample_indices(len(x), sample)
+            return x[indices]
+        
+        return sample_items
+
+    # create indices for the dataset
+    start = 0
+    dset_indices = []
+    for i, atoms in enumerate(dset):
+        num_atoms = len(atoms)
+        idx = np.arange(start, start + num_atoms, 1, dtype=int)
+        dset_indices.append(idx)
+        start = start + num_atoms
+
+    def sample_items():
+        indices = sample_indices(len(dset_indices), sample) 
+        x_indices = np.concatenate([
+            dset_indices[i] for i in indices
+        ])
+        return x[x_indices]
+
+    return sample_items
+
+
 @click.command("entropy_sampler")
 @click.argument("file", required=1)
 @click.option(
     "-c",
     "--cutoff",
     type=float,
-    default=6.0,
-    help="Cutoff (in Å) for computing the neighbor list (default: 6.0)",
-)
-@click.option(
-    "-r",
-    "--cutoff_interaction",
-    type=float,
-    default=5.0,
-    help="Cutoff (in Å) for considering interactions between atoms \
-            (default: 5.0)",
+    default=DEFAULT_CUTOFF,
+    help=f"Cutoff (in Å) for computing the neighbor list (default: {DEFAULT_CUTOFF:.1f})",
 )
 @click.option(
     "-k",
-    "--nbrs_descriptor",
+    "--nbrs",
     type=int,
-    default=32,
-    help="Number of neighbors when creating the descriptor (default: 32)",
-)
-@click.option(
-    "-t",
-    "--nbrs_finder",
-    type=int,
-    default=100,
-    help="Number of neighbors when computing the kernel (default: 100)",
+    default=DEFAULT_K,
+    help=f"Number of neighbors when creating the descriptor (default: {DEFAULT_K})",
 )
 @click.option(
     "-b",
     "--bandwidth",
     type=float,
-    default=0.015,
-    help="Bandwidth when computing the kernel (default: 0.015)",
-)
-@click.option(
-    "--kernel",
-    type=str,
-    default="gaussian",
-    help="Name of the kernel to use when computing the delta entropy (default: gaussian)",
+    default=DEFAULT_BANDWIDTH,
+    help=f"Bandwidth when computing the kernel (default: {DEFAULT_BANDWIDTH})",
 )
 @click.option(
     "-s",
@@ -90,8 +103,15 @@ def sample_indices(size: int, n: int):
     "-j",
     "--jobs",
     type=int,
-    default=1,
-    help="Number of jobs to distribute the calculation in (default: 1)",
+    default=None,
+    help="Number of jobs to distribute the calculation in (default: all)",
+)
+@click.option(
+    "-b",
+    "--batch_size",
+    type=int,
+    default=DEFAULT_BATCH,
+    help=f"Size of the batches when computing the distances (default: {DEFAULT_BATCH})",
 )
 @click.option(
     "-o",
@@ -104,95 +124,70 @@ def sample_indices(size: int, n: int):
 def entropy_sampler(
     file,
     cutoff,
-    cutoff_interaction,
-    nbrs_descriptor,
-    nbrs_finder,
+    nbrs,
     bandwidth,
-    kernel,
     sample,
     sample_dataset,
     num_runs,
     jobs,
+    batch_size,
     output,
 ):
     if output is not None and os.path.exists(output):
+        logger(f"Output file {output} exists. Aborting...")
         sys.exit(0)
 
-    logger(f"Sampling entropies for: {file}")
+    if jobs is not None:
+        nb.set_num_threads(jobs)
+
+    logger(f"Loading and creating descriptors for file {file}")
     dset = read(file, index=":")
-    dset = [add_box(atoms) for atoms in dset]
 
-    q = QUESTS(
-        cutoff=cutoff,
-        k=nbrs_descriptor,
-        interaction_cutoff=cutoff_interaction,
-    )
-
-    start_time = time.time()
-    x1, x2 = q.get_all_descriptors_parallel(dset, jobs=jobs)
-    x = np.concatenate([x1, x2], axis=1)
-    end_time = time.time()
-    descriptor_time = end_time - start_time
-
-    logger(f"Descriptors built in: {descriptor_time * 1000: .2f} ms")
+    with Timer() as t:
+        x = get_descriptors(dset, k=nbrs, cutoff=cutoff)
+    descriptor_time = t.time
+    logger(f"Descriptors built in: {format_time(descriptor_time)}")
+    logger(f"Descriptors shape: {x.shape}")
 
     # if dataset is smaller than sample, no need to
     # run multiple times
     if len(x) <= sample:
         num_runs = 1
 
-    if sample_dataset:
-        # create indices for the dataset
-        start = 0
-        dset_indices = []
-        for i, atoms in enumerate(dset):
-            num_atoms = len(atoms)
-            idx = np.arange(start, start + num_atoms, 1, dtype=int)
-            dset_indices.append(idx)
-            start = start + num_atoms
+    # determine how the dataset is going to be sampled
+    sample_items = get_sampling_fn(dset, x, sample, sample_dataset)
 
-        def sample_items():
-            indices = sample_indices(len(dset_indices), sample) 
-            x_indices = np.concatenate([
-                dset_indices[i] for i in indices
-            ])
-            return x[x_indices]
-
-    else:
-        def sample_items():
-            indices = sample_indices(len(x), sample)
-            return x[indices]
-
-        
-    # computing the entropies
+    # compute the entropy `num_runs` times
     entropies = []
+    entropies_times = []
     for n in range(num_runs):
         xsample = sample_items()
+        with Timer() as t:
+            entropy = perfect_entropy(xsample, h=bandwidth, batch_size=batch_size)
+        entropy_time = t.time
 
-        H = EntropyEstimator(
-            xsample,
-            h=bandwidth,
-            nbrs=nbrs_finder,
-            kernel=kernel,
-        )
-
-        entropy = H.dataset_entropy
         entropies.append(entropy)
+        entropies_times.append(entropy_time)
 
-        logger(f"Entropy {n:02d}: {entropy: .2f} (nats)")
+    logger(f"Entropy: {np.mean(entropies): .2f} ± {np.std(entropies): .2f} (nats)")
+    logger(f"computed from {num_runs} runs.")
+    logger(f"Max theoretical entropy: {np.log(xsample.shape[0]): .2f} (nats)")
 
+    # log the results
     if output is not None:
         results = {
             "file": file,
+            "n_envs": x.shape[0],
+            "k": nbrs,
             "cutoff": cutoff,
-            "cutoff_interaction": cutoff_interaction,
-            "nbrs_descriptor": nbrs_descriptor,
-            "nbrs_finder": nbrs_finder,
             "bandwidth": bandwidth,
-            "sample": sample,
-            "num_runs": num_runs,
             "jobs": jobs,
+            "sample": sample,
+            "sample_dataset": sample_dataset,
+            "num_runs": num_runs,
             "entropies": entropies,
+            "descriptor_time": descriptor_time,
+            "entropies_times": entropies_times,
         }
 
         with open(output, "w") as f:

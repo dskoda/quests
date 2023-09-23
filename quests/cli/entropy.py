@@ -67,7 +67,6 @@ def entropy(
     cutoff,
     nbrs,
     bandwidth,
-    kernel,
     jobs,
     batch_size,
     output,
@@ -75,12 +74,14 @@ def entropy(
     if jobs is not None:
         nb.set_num_threads(jobs)
 
+    logger(f"Loading and creating descriptors for file {file}")
     dset = read(file, index=":")
 
     with Timer() as t:
         x = get_descriptors(dset, k=nbrs, cutoff=cutoff)
     descriptor_time = t.time
     logger(f"Descriptors built in: {format_time(descriptor_time)}")
+    logger(f"Descriptors shape: {x.shape}")
 
     with Timer() as t:
         entropy = perfect_entropy(x, h=bandwidth, batch_size=batch_size)
@@ -88,10 +89,13 @@ def entropy(
     logger(f"Entropy computed in: {format_time(entropy_time)}")
 
     logger(f"Dataset entropy: {entropy: .2f} (nats)")
+    logger(f"Max theoretical entropy: {np.log(x.shape[0]): .2f} (nats)")
 
     if output is not None:
         results = {
             "file": file,
+            "n_envs": x.shape[0],
+            "k": nbrs,
             "cutoff": cutoff,
             "bandwidth": bandwidth,
             "jobs": jobs,
