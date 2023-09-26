@@ -48,7 +48,6 @@ from quests.tools.time import Timer
     help="Number of jobs to distribute the calculation in (default: all)",
 )
 @click.option(
-    "-b",
     "--batch_size",
     type=int,
     default=DEFAULT_BATCH,

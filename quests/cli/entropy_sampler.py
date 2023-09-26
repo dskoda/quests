@@ -1,3 +1,4 @@
+import sys
 import os
 import json
 import time
@@ -107,7 +108,6 @@ def get_sampling_fn(dset: List[Atoms], x: np.ndarray, sample, sample_dataset):
     help="Number of jobs to distribute the calculation in (default: all)",
 )
 @click.option(
-    "-b",
     "--batch_size",
     type=int,
     default=DEFAULT_BATCH,
