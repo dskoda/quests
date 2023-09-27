@@ -1,5 +1,6 @@
 import click
 
+from quests.cli.make_descriptors import make_descriptors
 from quests.cli.entropy import entropy
 from quests.cli.entropy_sampler import entropy_sampler
 
@@ -15,6 +16,7 @@ def quests():
 
 quests.add_command(entropy)
 quests.add_command(entropy_sampler)
+quests.add_command(make_descriptors)
 
 
 if __name__ == "__main__":
