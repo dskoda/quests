@@ -5,6 +5,7 @@ import numpy as np
 
 from .matrix import cdist
 from .matrix import logsumexp
+from .matrix import norm
 
 DEFAULT_BANDWIDTH = 0.015
 DEFAULT_BATCH = 2000
@@ -63,14 +64,17 @@ def delta_entropy(
     N = test.shape[0]
     max_step = math.ceil(N / batch_size)
 
+    norm_ref = norm(ref)
+    norm_test = norm(test)
     entropies = np.empty(N, dtype=test.dtype)
 
     for step in nb.prange(0, max_step):
         i = step * batch_size
         imax = min(i + batch_size, N)
         batch = test[i:imax]
+        batch_norm = norm_test[i:imax]
 
-        d = cdist(batch, ref)
+        d = cdist(batch, ref, batch_norm, norm_ref)
 
         # computation of the entropy
         z = d / h

@@ -28,7 +28,19 @@ def logsumexp(X):
 
 
 @nb.njit(fastmath=True)
-def cdist(A, B):
+def norm(A):
+    norm_A = np.empty(A.shape[0], dtype=A.dtype)
+    for i in range(A.shape[0]):
+        _sum = 0.0
+        for j in range(A.shape[1]):
+            _sum += A[i, j] ** 2
+        norm_A[i] = _sum
+
+    return norm_A
+
+
+@nb.njit(fastmath=True)
+def cdist(A, B, norm_A=None, norm_B=None):
     """Optimized distance calculation using numba.
 
     Arguments:
@@ -41,21 +53,12 @@ def cdist(A, B):
     # Computing the dot product
     dist = np.dot(A, B.T)
 
-    # Computing the norm of A
-    norm_A = np.empty(A.shape[0], dtype=A.dtype)
-    for i in range(A.shape[0]):
-        _sum = 0.0
-        for j in range(A.shape[1]):
-            _sum += A[i, j] ** 2
-        norm_A[i] = _sum
+    # Computing the norms
+    if norm_A is None:
+        norm_A = norm(A)
 
-    # Computing the norm of B
-    norm_B = np.empty(B.shape[0], dtype=A.dtype)
-    for i in range(B.shape[0]):
-        _sum = 0.0
-        for j in range(B.shape[1]):
-            _sum += B[i, j] ** 2
-        norm_B[i] = _sum
+    if norm_B is None:
+        norm_B = norm(B)
 
     # computes the distance using the dot product
     # | a - b | ** 2 = <a, a> + <b, b> - 2<a, b>
@@ -64,10 +67,7 @@ def cdist(A, B):
             d = -2.0 * dist[i, j] + norm_A[i] + norm_B[j]
 
             # numerical stability
-            if d < 0:
-                dist[i, j] = 0
-            else:
-                dist[i, j] = math.sqrt(d)
+            dist[i, j] = math.sqrt(d) if d > 0 else 0
 
     return dist
 
