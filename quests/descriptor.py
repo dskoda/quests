@@ -73,12 +73,8 @@ def descriptor_x2(
         max_rows = N
 
     # Lazy initialization of the matrix
-    if N > k:
-        x2 = np.empty((max_rows, k - 1))
-        jmax = k
-    else:
-        x2 = np.full((max_rows, k - 1), fill_value=0.0)
-        jmax = N - 1
+    x2 = np.full((max_rows, k - 1), fill_value=0.0)
+    jmax = k if N > k else (N - 1)
 
     # Computes the second descriptor
     for i in range(max_rows):

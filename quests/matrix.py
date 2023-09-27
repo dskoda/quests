@@ -33,7 +33,8 @@ def norm(A):
     for i in range(A.shape[0]):
         _sum = 0.0
         for j in range(A.shape[1]):
-            _sum += A[i, j] ** 2
+            a = A[i, j]
+            _sum += a * a
         norm_A[i] = _sum
 
     return norm_A
@@ -53,7 +54,7 @@ def cdist(A, B, norm_A=None, norm_B=None):
     # Computing the dot product
     dist = np.dot(A, B.T)
 
-    # Computing the norms
+    # Computing the norms if they are not given
     if norm_A is None:
         norm_A = norm(A)
 
@@ -66,7 +67,7 @@ def cdist(A, B, norm_A=None, norm_B=None):
         for j in range(B.shape[0]):
             d = -2.0 * dist[i, j] + norm_A[i] + norm_B[j]
 
-            # numerical stability
+            # sqrt with numerical stability
             dist[i, j] = math.sqrt(d) if d > 0 else 0
 
     return dist
