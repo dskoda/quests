@@ -188,7 +188,8 @@ def create_bin_dict(bins: np.ndarray, max_bins: int):
 def wrap_pbc(xyz: np.ndarray, cell: np.ndarray):
     inv = inverse_3d(cell)
     frac_coords = np.dot(xyz, inv)
-    frac_coords = frac_coords % 1.0
+    frac_coords = np.round(frac_coords, decimals=12)  # numerical stability
+    frac_coords = frac_coords % 1.0  # wrap back to the unit cell
     cart_coords = np.dot(frac_coords, cell)
     return frac_coords, cart_coords
 
@@ -228,11 +229,11 @@ def descriptor_pbc(
     delta_x, delta_y, delta_z = n_nbr_bins
 
     # this is the number of bins we will partition the existing cell into
+    max_bins = np.prod(n_bins)
     n_bins_x, n_bins_y, n_bins_z = n_bins
 
     bins, cart_coords = bin_atoms(xyz, cell, n_bins)
 
-    max_bins = np.prod(n_bins)
     bin_dict = create_bin_dict(bins, max_bins)
 
     # initializes the descriptors
