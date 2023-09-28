@@ -1,10 +1,10 @@
 import numba as nb
 import numpy as np
+from ase import Atoms
 from numba import types
 from numba.typed import Dict
 from numba.typed import List
 
-from ase import Atoms
 from .matrix import argsort
 from .matrix import cdist
 from .matrix import inverse_3d
@@ -322,7 +322,7 @@ def descriptor_pbc(
             for v in range(k + 1):
                 atom_sorter[0, v] = v
 
-            # compute the descriptors only for atoms within the bin
+            # compute the descriptors only for the single atom under analysis
             atom_x1 = descriptor_x1(atom_dm, atom_sorter, k, cutoff, max_rows=1)
             atom_x2 = descriptor_x2(atom_dm, atom_sorter, k, cutoff, max_rows=1)
 
@@ -331,7 +331,7 @@ def descriptor_pbc(
                 x1[atom_j, col] = atom_x1[0, col]
 
             # x2 has k-1 columns
-            for col in range(k):
+            for col in range(k - 1):
                 x2[atom_j, col] = atom_x2[0, col]
 
     # finished processing this bin. Now, return and process
