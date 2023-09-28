@@ -9,12 +9,15 @@ from .matrix import norm
 
 DEFAULT_BANDWIDTH = 0.015
 DEFAULT_BATCH = 2000
-DEFAULT_REF_BATCH = 100000
+DEFAULT_BATCH_REF = 100000
 
 
 @nb.njit(fastmath=True)
 def perfect_entropy(
-    x: np.ndarray, h: float = DEFAULT_BANDWIDTH, batch_size: int = DEFAULT_BATCH
+    x: np.ndarray,
+    h: float = DEFAULT_BANDWIDTH,
+    batch_size: int = DEFAULT_BATCH,
+    batch_size_ref: int = DEFAULT_BATCH_REF,
 ):
     """Computes the perfect entropy of a dataset using a batch distance
         calculation. This is necessary because the full distance matrix
@@ -32,7 +35,9 @@ def perfect_entropy(
         entropy (float): entropy of the dataset given by `x`.
     """
     N = x.shape[0]
-    entropies = delta_entropy(x, x, h=h, batch_size=batch_size)
+    entropies = delta_entropy(
+        x, x, h=h, batch_size=batch_size, batch_size_ref=batch_size_ref
+    )
 
     return np.log(N) - np.mean(entropies)
 
@@ -43,7 +48,7 @@ def delta_entropy(
     ref: np.ndarray,
     h: float = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,
-    ref_batch_size: int = DEFAULT_REF_BATCH,
+    batch_size_ref: int = DEFAULT_BATCH_REF,
 ):
     """Computes the delta entropy of a dataset `x` using the dataset
         `ref` as a reference. The function uses a batch distance
@@ -69,7 +74,7 @@ def delta_entropy(
     max_step_x = math.ceil(N / batch_size)
 
     M = ref.shape[0]
-    max_step_ref = math.ceil(M / ref_batch_size)
+    max_step_ref = math.ceil(M / batch_size_ref)
 
     norm_ref = norm(ref)
     norm_x = norm(x)
@@ -88,8 +93,8 @@ def delta_entropy(
         # loops over all columns in batches to prevent memory overflow
         d = np.empty((n_rows, M))
         for step_ref in range(0, max_step_ref):
-            j = step_ref * ref_batch_size
-            jmax = min(j + ref_batch_size, M)
+            j = step_ref * batch_size_ref
+            jmax = min(j + batch_size_ref, M)
             ref_batch = ref[j:jmax]
             ref_batch_norm = norm_ref[j:jmax]
 
