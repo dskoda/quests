@@ -76,6 +76,7 @@ def delta_entropy(
     M = ref.shape[0]
     max_step_ref = math.ceil(M / batch_size_ref)
 
+    # precomputing the norms saves us some time
     norm_ref = norm(ref)
     norm_x = norm(x)
     entropies = np.empty(N, dtype=x.dtype)
