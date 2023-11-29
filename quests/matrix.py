@@ -5,6 +5,29 @@ import numpy as np
 
 
 @nb.njit(fastmath=True)
+def sumexp(X):
+    """sumexp optimized for numba. Can lead to numerical
+        instabilities, but it's really fast.
+
+    Arguments:
+        X (np.ndarray): an (N, d) matrix with the values. The
+            summation will happen over the axis 1.
+
+    Returns:
+        sumexp (np.ndarray): sum(exp(X), axis=1)
+    """
+    result = np.empty(X.shape[0], dtype=X.dtype)
+    for i in range(X.shape[0]):
+        _sum = 0.0
+        for j in range(X.shape[1]):
+            _sum += math.exp(X[i, j])
+
+        result[i] = _sum
+
+    return result
+
+
+@nb.njit(fastmath=True)
 def logsumexp(X):
     """logsumexp optimized for numba. Can lead to numerical
         instabilities, but it's really fast.
@@ -16,14 +39,7 @@ def logsumexp(X):
     Returns:
         logsumexp (np.ndarray): log(sum(exp(X), axis=1))
     """
-    result = np.empty(X.shape[0], dtype=X.dtype)
-    for i in range(X.shape[0]):
-        _sum = 0.0
-        for j in range(X.shape[1]):
-            _sum += math.exp(X[i, j])
-
-        result[i] = _sum
-
+    result = sumexp(X)
     return np.log(result)
 
 
