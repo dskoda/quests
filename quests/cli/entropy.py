@@ -1,3 +1,4 @@
+import gc
 import json
 import time
 
@@ -81,6 +82,10 @@ def entropy(
     descriptor_time = t.time
     logger(f"Descriptors built in: {format_time(descriptor_time)}")
     logger(f"Descriptors shape: {x.shape}")
+
+    # invoke garbage collector to save memory
+    del dset
+    gc.collect()
 
     with Timer() as t:
         entropy = perfect_entropy(x, h=bandwidth, batch_size=batch_size)

@@ -9,7 +9,7 @@ from .matrix import norm
 
 DEFAULT_BANDWIDTH = 0.015
 DEFAULT_BATCH = 2000
-DEFAULT_BATCH_REF = 100000
+DEFAULT_BATCH_REF = 50000
 
 
 @nb.njit(fastmath=True)
