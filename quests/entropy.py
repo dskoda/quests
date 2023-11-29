@@ -11,7 +11,7 @@ DEFAULT_BANDWIDTH = 0.015
 DEFAULT_BATCH = 10000
 
 
-@nb.njit(fastmath=True)
+@nb.njit(fastmath=True, cache=True)
 def perfect_entropy(
     x: np.ndarray,
     h: float = DEFAULT_BANDWIDTH,
@@ -38,7 +38,7 @@ def perfect_entropy(
     return np.log(N) - np.mean(entropies)
 
 
-@nb.njit(fastmath=True, parallel=True)
+@nb.njit(fastmath=True, parallel=True, cache=True)
 def delta_entropy(
     x: np.ndarray,
     y: np.ndarray,
@@ -74,7 +74,7 @@ def delta_entropy(
     norm_y = norm(y)
 
     # variables that are going to store the results
-    entropies = np.empty(M, dtype=x.dtype)
+    entropies = np.zeros(M, dtype=x.dtype)
 
     # loops over rows and columns to compute the
     # distance matrix without keeping it entirely
@@ -97,8 +97,8 @@ def delta_entropy(
             # p is the estimated probability distribution for the batch
             p = sumexp(-0.5 * (z**2))
 
-            for j in range(i, imax):
-                entropies[j] += p[j - i]
+            for k in range(i, imax):
+                entropies[k] = entropies[k] + p[k - i]
 
         # after summing everything, we take the log
         for j in range(i, imax):
