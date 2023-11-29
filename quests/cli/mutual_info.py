@@ -119,13 +119,20 @@ def mutual_info(
     x = np.concatenate([x1, x2], axis=0)
     with Timer() as t:
         joint_entropy = perfect_entropy(x, h=bandwidth, batch_size=batch_size)
+
     entropy_time_3 = t.time
     logger(f"Entropy computed in: {format_time(entropy_time_3)}")
     logger(f"Dataset entropy: {joint_entropy: .2f} (nats)")
+    logger(f"Max theoretical entropy: {np.log(x.shape[0]): .2f} (nats)")
 
     mutual = entropy_1 + entropy_2 - joint_entropy
     logger(f"Mutual Information: {mutual: .2f} (nats)")
-    logger(f"Max mutual information: {np.log(x.shape[0]): .2f} (nats)")
+    logger(f"H(1|2): {entropy_1 - mutual: .2f} (nats)")
+    logger(f"H(2|1): {entropy_2 - mutual: .2f} (nats)")
+
+    distance = joint_entropy - mutual
+    logger(f"d(1, 2): {distance: .2f} (nats)")
+    logger(f"D(1, 2): {distance / joint_entropy: .2f} (a.u.)")
 
     if output is not None:
         results = {
