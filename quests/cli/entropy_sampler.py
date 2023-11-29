@@ -169,9 +169,9 @@ def entropy_sampler(
         entropies.append(entropy)
         entropies_times.append(entropy_time)
 
-    logger(f"Entropy: {np.mean(entropies): .2f} ± {np.std(entropies): .2f} (nats)")
+    logger(f"Entropy: {np.mean(entropies): .3f} ± {np.std(entropies): .3f} (nats)")
     logger(f"computed from {num_runs} runs.")
-    logger(f"Max theoretical entropy: {np.log(xsample.shape[0]): .2f} (nats)")
+    logger(f"Max theoretical entropy: {np.log(xsample.shape[0]): .3f} (nats)")
 
     # log the results
     if output is not None:

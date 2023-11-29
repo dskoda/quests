@@ -55,7 +55,7 @@ from quests.tools.time import Timer
     "--output",
     type=str,
     default=None,
-    help="path to the json file that will contain the output\
+    help="path to the file that will contain the output\
             (default: no output produced)",
 )
 def make_descriptors(
