@@ -19,7 +19,7 @@ DEFAULT_K: int = 32
 EPS: float = 1e-15
 
 
-@nb.njit(fastmath=True, cache=True)
+@nb.njit(fastmath=True)
 def descriptor_weight(r: float, cutoff: float):
     if r > cutoff:
         r = cutoff
@@ -28,7 +28,7 @@ def descriptor_weight(r: float, cutoff: float):
     return (1 - z**2) ** 2
 
 
-@nb.njit(fastmath=True, cache=True)
+@nb.njit(fastmath=True)
 def descriptor_x1(
     dm: np.ndarray,
     sorter: np.ndarray,
@@ -61,7 +61,7 @@ def descriptor_x1(
     return x1
 
 
-@nb.njit(fastmath=True, cache=True)
+@nb.njit(fastmath=True)
 def descriptor_x2(
     dm: np.ndarray,
     sorter: np.ndarray,
@@ -112,7 +112,7 @@ def descriptor_x2(
     return x2
 
 
-@nb.njit(fastmath=True, cache=True)
+@nb.njit(fastmath=True)
 def descriptor_nopbc(
     xyz: np.ndarray,
     k: int = DEFAULT_K,
@@ -127,7 +127,7 @@ def descriptor_nopbc(
     return x1, x2
 
 
-@nb.njit(fastmath=True, cache=True)
+@nb.njit(fastmath=True)
 def get_num_bins(cell: np.ndarray, cutoff: float):
     bx = np.cross(cell[1], cell[2])
     by = np.cross(cell[2], cell[0])
@@ -154,12 +154,12 @@ def get_num_bins(cell: np.ndarray, cutoff: float):
     return n_bins, n_nbr_bins
 
 
-@nb.njit(fastmath=True, cache=True)
+@nb.njit(fastmath=True)
 def to_contiguous_index(nx, ny, nz, n_bins):
     return nx + ny * n_bins[0] + nz * n_bins[0] * n_bins[1]
 
 
-@nb.njit(fastmath=True, cache=True)
+@nb.njit(fastmath=True)
 def to_tuple_index(idx, n_bins):
     nz = idx // (n_bins[0] * n_bins[1])
     idx -= nz * n_bins[0] * n_bins[1]
@@ -186,7 +186,7 @@ def create_bin_dict(bins: np.ndarray, max_bins: int):
     return bin_dict
 
 
-@nb.njit(fastmath=True, cache=True)
+@nb.njit(fastmath=True)
 def wrap_pbc(xyz: np.ndarray, cell: np.ndarray):
     inv = inverse_3d(cell)
     frac_coords = np.dot(xyz, inv)
@@ -196,7 +196,7 @@ def wrap_pbc(xyz: np.ndarray, cell: np.ndarray):
     return frac_coords, cart_coords
 
 
-@nb.njit(fastmath=True, cache=True)
+@nb.njit(fastmath=True)
 def bin_atoms(xyz: np.ndarray, cell: np.ndarray, n_bins: np.ndarray):
     """Separates the atoms into bins by splitting the `cell` into
     `n_bins` depending on the vector directions.
@@ -214,7 +214,7 @@ def bin_atoms(xyz: np.ndarray, cell: np.ndarray, n_bins: np.ndarray):
     return bins, cart_coords
 
 
-@nb.njit(fastmath=True, cache=True, parallel=True)
+@nb.njit(fastmath=True, parallel=True)
 def descriptor_pbc(
     xyz: np.ndarray,
     cell: np.ndarray,
