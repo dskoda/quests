@@ -11,7 +11,7 @@ DEFAULT_BANDWIDTH = 0.015
 DEFAULT_BATCH = 10000
 
 
-@nb.njit(fastmath=True)
+@nb.njit(fastmath=True, cache=True)
 def perfect_entropy(
     x: np.ndarray,
     h: float = DEFAULT_BANDWIDTH,
@@ -38,7 +38,7 @@ def perfect_entropy(
     return np.log(N) - np.mean(entropies)
 
 
-@nb.njit(fastmath=True, parallel=True)
+@nb.njit(fastmath=True, parallel=True, cache=True)
 def delta_entropy(
     x: np.ndarray,
     y: np.ndarray,
