@@ -19,7 +19,7 @@ DEFAULT_K: int = 32
 EPS: float = 1e-15
 
 
-@nb.njit(fastmath=True)
+@nb.njit(fastmath=True, cache=True)
 def descriptor_weight(r: float, cutoff: float):
     if r > cutoff:
         r = cutoff
@@ -28,13 +28,14 @@ def descriptor_weight(r: float, cutoff: float):
     return (1 - z**2) ** 2
 
 
-@nb.njit(fastmath=True)
+@nb.njit(fastmath=True, cache=True)
 def descriptor_x1(
     dm: np.ndarray,
     sorter: np.ndarray,
     k: int = 32,
     cutoff: float = 5.0,
     max_rows: int = -1,
+    eps: float = 1e-16,
 ) -> np.ndarray:
     N = dm.shape[0]
     if max_rows <= 0:
@@ -52,7 +53,7 @@ def descriptor_x1(
     for i in range(max_rows):
         for j in range(jmax):
             atom_j = sorter[i, j + 1]
-            rij = dm[i, atom_j]
+            rij = dm[i, atom_j] + eps
             #wij = descriptor_weight(rij, cutoff)
             #x1[i, j] = wij / rij
             #x1[i, j] = wij * rij
@@ -61,7 +62,7 @@ def descriptor_x1(
     return x1
 
 
-@nb.njit(fastmath=True)
+@nb.njit(fastmath=True, cache=True)
 def descriptor_x2(
     dm: np.ndarray,
     sorter: np.ndarray,
@@ -112,7 +113,7 @@ def descriptor_x2(
     return x2
 
 
-@nb.njit(fastmath=True)
+@nb.njit(fastmath=True, cache=True)
 def descriptor_nopbc(
     xyz: np.ndarray,
     k: int = DEFAULT_K,
@@ -127,7 +128,7 @@ def descriptor_nopbc(
     return x1, x2
 
 
-@nb.njit(fastmath=True)
+@nb.njit(fastmath=True, cache=True)
 def get_num_bins(cell: np.ndarray, cutoff: float):
     bx = np.cross(cell[1], cell[2])
     by = np.cross(cell[2], cell[0])
@@ -154,12 +155,12 @@ def get_num_bins(cell: np.ndarray, cutoff: float):
     return n_bins, n_nbr_bins
 
 
-@nb.njit(fastmath=True)
+@nb.njit(fastmath=True, cache=True)
 def to_contiguous_index(nx, ny, nz, n_bins):
     return nx + ny * n_bins[0] + nz * n_bins[0] * n_bins[1]
 
 
-@nb.njit(fastmath=True)
+@nb.njit(fastmath=True, cache=True)
 def to_tuple_index(idx, n_bins):
     nz = idx // (n_bins[0] * n_bins[1])
     idx -= nz * n_bins[0] * n_bins[1]
@@ -171,7 +172,7 @@ def to_tuple_index(idx, n_bins):
     return nx, ny, nz
 
 
-@nb.njit()
+@nb.njit(cache=True)
 def create_bin_dict(bins: np.ndarray, max_bins: int):
     # initializes the list of atoms per bin
     bin_dict = Dict.empty(key_type=types.int64, value_type=IntList)
@@ -186,7 +187,7 @@ def create_bin_dict(bins: np.ndarray, max_bins: int):
     return bin_dict
 
 
-@nb.njit(fastmath=True)
+@nb.njit(fastmath=True, cache=True)
 def wrap_pbc(xyz: np.ndarray, cell: np.ndarray):
     inv = inverse_3d(cell)
     frac_coords = np.dot(xyz, inv)
@@ -196,7 +197,7 @@ def wrap_pbc(xyz: np.ndarray, cell: np.ndarray):
     return frac_coords, cart_coords
 
 
-@nb.njit(fastmath=True)
+@nb.njit(fastmath=True, cache=True)
 def bin_atoms(xyz: np.ndarray, cell: np.ndarray, n_bins: np.ndarray):
     """Separates the atoms into bins by splitting the `cell` into
     `n_bins` depending on the vector directions.
@@ -214,7 +215,7 @@ def bin_atoms(xyz: np.ndarray, cell: np.ndarray, n_bins: np.ndarray):
     return bins, cart_coords
 
 
-@nb.njit(fastmath=True, parallel=True)
+@nb.njit(fastmath=True, cache=True, parallel=True)
 def descriptor_pbc(
     xyz: np.ndarray,
     cell: np.ndarray,
@@ -303,6 +304,7 @@ def descriptor_pbc(
 
         # do not sort neighbors outside of the bin to save time
         sorter = argsort(dm)
+        k_min = min([k + 1, len(nbrs_xyz)])
 
         # loops over the atoms in the bin to avoid computing the
         # distance matrix between all neighbors
@@ -310,8 +312,8 @@ def descriptor_pbc(
             atom_j = atoms[j]
 
             # get the positions from the neighbors
-            atom_xyz = np.empty((k + 1, 3))
-            for nbr in range(k + 1):
+            atom_xyz = np.empty((k_min, 3))
+            for nbr in range(k_min):
                 nbr_idx = sorter[j, nbr]
                 atom_xyz[nbr] = nbrs_xyz[nbr_idx]
 
@@ -321,8 +323,8 @@ def descriptor_pbc(
 
             # the new distance matrix is already sorted, so the new
             # sorter is basically an arange
-            atom_sorter = np.empty((1, k + 1), dtype=sorter.dtype)
-            for v in range(k + 1):
+            atom_sorter = np.empty((1, k_min), dtype=sorter.dtype)
+            for v in range(k_min):
                 atom_sorter[0, v] = v
 
             # compute the descriptors only for the single atom under analysis
