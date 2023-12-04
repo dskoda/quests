@@ -28,37 +28,6 @@ def get_name(f1: str, f2: str):
     return n1 + "-" + n2
 
 
-def sample_dataset(x: np.ndarray, n: int):
-    size = x.shape[0]
-    if size < n:
-        return x
-
-    indices = np.random.randint(0, size, n)
-    return x[indices]
-
-
-def compute_entropy(x: np.ndarray, n_samples: int, n_runs: int, batch_size: int = 2000):
-    entropies = []
-    times = []
-    for run in range(n_runs):
-        xsample = sample_dataset(x, n_samples)
-        n_envs = xsample.shape[0] * xsample.shape[1]
-        xsample = xsample.reshape(n_envs, -1)
-
-        with Timer() as t:
-            entropy = perfect_entropy(xsample, batch_size=batch_size)
-        entropy_time = t.time
-        entropies.append(entropy)
-        times.append(entropy_time)
-
-    logger(f"Entropy: {np.mean(entropies): .2f} ± {np.std(entropies): .2f} (nats)")
-    logger(f"computed from {n_runs} runs and {n_samples} samples.")
-    logger(f"Max theoretical entropy: {np.log(xsample.shape[0]): .2f} (nats)")
-    logger(f"Mean to compute: {format_time(np.mean(times))}/run")
-
-    return entropies
-
-
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Parse command line arguments.")
 
@@ -112,7 +81,7 @@ def main():
             "file_1": f1,
             "file_2": f2,
             "bandwidth": args.bandwidth,
-            "delta_entropy": delta,
+            "delta_entropy": list(delta),
         }
 
         with path.open("w") as f:
