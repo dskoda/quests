@@ -71,15 +71,10 @@ def main():
     args = parse_arguments()
 
     files = sorted([f for f in os.listdir(args.folder) if f.endswith(".xyz")])
-    logger(f"Computing descriptors for {len(files)} files")
-    x = {}
-    for f in tqdm.tqdm(files):
-        x[f] = compute_descriptors(os.path.join(args.folder, f))
-
     samples = [0.2, 0.4, 0.6, 0.8, 1.0]
 
     logger("Subsampling the descriptors to obtain the entropy curves")
-    for file, _x in tqdm.tqdm(x.items()):
+    for file in tqdm.tqdm(files):
         name = file.replace(".xyz", "")
         path = Path(os.path.join(args.output, name + ".json"))
         if path.exists():
@@ -87,12 +82,14 @@ def main():
 
         path.touch()
 
+        x = compute_descriptors(os.path.join(args.folder, file))
+
         results = []
         for sample in samples:
-            n = np.floor(len(_x) * sample)
+            n = int(np.floor(len(x) * sample))
             n_runs = 5 if sample != 1.0 else 1
             entropies = compute_entropy(
-                _x, n, n_runs=n_runs, batch_size=args.batch_size
+                x, n, n_runs=n_runs, batch_size=args.batch_size
             )
             results.append(
                 {
@@ -107,7 +104,7 @@ def main():
             )
 
         with path.open("w") as f:
-            json.dump(data, f)
+            json.dump(results, f)
 
 
 if __name__ == "__main__":
