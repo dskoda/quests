@@ -53,8 +53,10 @@ def descriptor_x1(
         for j in range(jmax):
             atom_j = sorter[i, j + 1]
             rij = dm[i, atom_j]
-            wij = descriptor_weight(rij, cutoff)
-            x1[i, j] = wij / rij
+            #wij = descriptor_weight(rij, cutoff)
+            #x1[i, j] = wij / rij
+            #x1[i, j] = wij * rij
+            x1[i, j] = 1 / pow(rij, 3 / 2)
 
     return x1
 
