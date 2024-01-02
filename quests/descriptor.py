@@ -1,3 +1,5 @@
+import math
+
 import numba as nb
 import numpy as np
 from ase import Atoms
@@ -49,7 +51,7 @@ def descriptor_x1(
         x1 = np.full((max_rows, k), fill_value=0.0)
         jmax = N - 1
 
-    # Computes the descriptor x1 in parallel
+    # Computes the descriptor x1
     for i in range(max_rows):
         for j in range(jmax):
             atom_j = sorter[i, j + 1]
@@ -57,7 +59,7 @@ def descriptor_x1(
             #wij = descriptor_weight(rij, cutoff)
             #x1[i, j] = wij / rij
             #x1[i, j] = wij * rij
-            x1[i, j] = 1 / pow(rij, 3 / 2)
+            x1[i, j] = 1 / pow(rij, 1.5)
 
     return x1
 
@@ -87,14 +89,16 @@ def descriptor_x2(
         for j in range(jmax):
             atom_j = sorter[i, j + 1]
             rij = dm[i, atom_j]
-            wij = descriptor_weight(rij, cutoff)
+            #wij = descriptor_weight(rij, cutoff)
 
             for l in range(j + 1, jmax):
                 atom_l = sorter[i, l + 1]
                 ril = dm[i, atom_l]
-                wil = descriptor_weight(ril, cutoff)
+                #wil = descriptor_weight(ril, cutoff)
 
-                x2_jl = (wij * wil) / (dm[atom_j, atom_l] + eps)
+                r_ijl = rij * ril * dm[atom_j, atom_l]
+
+                x2_jl = 1 / (math.sqrt(r_ijl) + eps)
                 rjl[j, l] = x2_jl
                 rjl[l, j] = x2_jl
 
