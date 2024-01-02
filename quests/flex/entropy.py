@@ -5,7 +5,7 @@ import numpy as np
 from scipy.special import logsumexp
 
 from .distance import batch_distances
-from .finders import TreeNeighbors
+from .finders import NeighborsFinder
 
 
 class EntropyEstimator:
@@ -37,11 +37,11 @@ class EntropyEstimator:
         self.kernel = self._get_kernel(kernel)
         self.metric = metric
 
-    def _get_finder(self, finder: Union[str, TreeNeighbors], x: np.ndarray) -> Callable:
+    def _get_finder(self, finder: Union[str, NeighborsFinder], x: np.ndarray) -> Callable:
         if finder is None:
             return None
 
-        if isinstance(finder, TreeNeighbors):
+        if isinstance(finder, NeighborsFinder):
             return finder
 
         if not isinstance(finder, str):
@@ -50,7 +50,7 @@ class EntropyEstimator:
         name = finder.lower()
 
         if name == "pykdtree":
-            from .finder.pykdtree import KDTreeFinder
+            from .finders.pykdtree import KDTreeFinder
             finder = KDTreeFinder(x)
 
         else:

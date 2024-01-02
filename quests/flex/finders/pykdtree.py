@@ -1,6 +1,6 @@
 import multiprocess as mp
 import numpy as np
-from quests.batch import chunks
+from quests.flex.batch import chunks
 
 from .base import NeighborsFinder
 from pykdtree.kdtree import KDTree
