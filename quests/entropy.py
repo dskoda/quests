@@ -5,6 +5,7 @@ import numpy as np
 
 from .matrix import cdist
 from .matrix import norm
+from .matrix import sum_positive
 from .matrix import sumexp
 
 DEFAULT_BANDWIDTH = 0.015

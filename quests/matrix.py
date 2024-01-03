@@ -5,6 +5,28 @@ import numpy as np
 
 
 @nb.njit(fastmath=True)
+def sum_positive(X):
+    """sumexp optimized for numba. Can lead to numerical
+        instabilities, but it's really fast.
+
+    Arguments:
+        X (np.ndarray): an (N, d) matrix with the values. The
+            summation will happen over the axis 1.
+
+    Returns:
+        sumexp (np.ndarray): sum(exp(X), axis=1)
+    """
+    result = np.empty(X.shape[0], dtype=X.dtype)
+    for i in range(X.shape[0]):
+        _sum = 0.0
+        for j in range(X.shape[1]):
+            _sum += max(X[i, j], 0)
+
+        result[i] = _sum
+
+    return result
+
+@nb.njit(fastmath=True)
 def sumexp(X):
     """sumexp optimized for numba. Can lead to numerical
         instabilities, but it's really fast.
