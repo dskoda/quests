@@ -90,6 +90,32 @@ def cdist(A, B, norm_A=None, norm_B=None):
 
 
 @nb.njit(fastmath=True)
+def cdist_Linf(A, B):
+    """Optimized distance calculation using numba using the
+        Chebyshev distance (L-infinity norm)
+
+    Arguments:
+        A (np.ndarray): an (N, d) matrix with the descriptors
+        B (np.ndarray): an (M, d) matrix with the descriptors
+
+    Returns:
+        dist (np.ndarray): distance matrix
+    """
+    # Computing the dot product
+    M = A.shape[0]
+    N = B.shape[0]
+    dm = np.empty((M, N), dtype=A.dtype)
+
+    # computes the distance using the Chebyshev norm
+    for i in range(A.shape[0]):
+        a = A[i]
+        for j in range(B.shape[0]):
+            dm[i, j] = np.abs(a - B[j]).max()
+
+    return dm
+
+
+@nb.njit(fastmath=True)
 def pdist(A):
     """Optimized distance matrix calculation using numba.
 

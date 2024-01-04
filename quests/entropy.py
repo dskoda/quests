@@ -4,6 +4,7 @@ import numba as nb
 import numpy as np
 
 from .matrix import cdist
+from .matrix import cdist_Linf
 from .matrix import norm
 from .matrix import sumexp
 
@@ -93,7 +94,8 @@ def delta_entropy(
             y_batch_norm = norm_y[j:jmax]
 
             # computing the estimated probability distribution for the batch
-            z = cdist(x_batch, y_batch, x_batch_norm, y_batch_norm)
+            #z = cdist(x_batch, y_batch, x_batch_norm, y_batch_norm)
+            z = cdist_Linf(x_batch, y_batch)
             z = z / h
             z = sumexp(-0.5 * (z**2))
 
