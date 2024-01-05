@@ -22,7 +22,9 @@ pip install .
 
 ## Usage
 
-Once installed, you can use the `quests` command to perform different analyses. For example, to compute the entropy of any dataset (the input can be anything that ASE reads), you can use the `quests entropy` command:
+### Command line
+
+Once installed, you can use the `quests` command to perform different analyses. For example, to compute the entropy of any dataset (the input can be anything that ASE reads, including xyz files), you can use the `quests entropy` command:
 
 ```
 quests entropy dump.lammpstrj --bandwidth 0.015
@@ -37,6 +39,11 @@ quests entropy_sampler dump.lammpstrj --batch_size 20000 -s 100000 -n 1
 `-s` specifies the number of sampled environments, `-n` specifies how many runs will be computed (for statistics).
 
 For additional help with these commands, please use `quests --help`, `quests entropy --help`, and others.
+
+### API
+
+To integrate the QUESTS code with other codes, the easiest way is to use the functions to [get descriptors](https://lc.llnl.gov/gitlab/dskoda/quests/-/blob/main/quests/descriptor.py?ref_type=heads#L346) and [compute entropies](https://lc.llnl.gov/gitlab/dskoda/quests/-/blob/main/quests/entropy.py?ref_type=heads#L16).
+More extensive documentation is to come.
 
 ## Contact
 
