@@ -36,7 +36,7 @@ def perfect_entropy(
     N = x.shape[0]
     entropies = delta_entropy(x, x, h=h, batch_size=batch_size)
 
-    return np.log(N) - np.mean(entropies)
+    return -np.mean(entropies)
 
 
 @nb.njit(fastmath=True, parallel=True, cache=True)
@@ -61,7 +61,7 @@ def delta_entropy(
             performing a distance calculation.
 
     Returns:
-        entropies (np.ndarray): a (M,) vector containing all 
+        entropies (np.ndarray): a (M,) vector containing all
             differential entropies of `x` computed with respect to `y`.
     """
     M = x.shape[0]
@@ -94,8 +94,7 @@ def delta_entropy(
             y_batch_norm = norm_y[j:jmax]
 
             # computing the estimated probability distribution for the batch
-            #z = cdist(x_batch, y_batch, x_batch_norm, y_batch_norm)
-            z = cdist_Linf(x_batch, y_batch)
+            z = cdist(x_batch, y_batch, x_batch_norm, y_batch_norm)
             z = z / h
             z = sumexp(-0.5 * (z**2))
 
@@ -104,6 +103,6 @@ def delta_entropy(
 
         # after summing everything, we take the log
         for j in range(i, imax):
-            entropies[j] = math.log(entropies[j])
+            entropies[j] = math.log(entropies[j] / N)
 
     return entropies
