@@ -121,6 +121,12 @@ def get_sampling_fn(dset: List[Atoms], x: np.ndarray, sample, sample_dataset):
     help="path to the json file that will contain the output\
             (default: no output produced)",
 )
+@click.option(
+    "--overwrite",
+    is_flag=True,
+    default=False,
+    help="If True, overwrite the output file",
+)
 def entropy_sampler(
     file,
     cutoff,
@@ -132,8 +138,9 @@ def entropy_sampler(
     jobs,
     batch_size,
     output,
+    overwrite
 ):
-    if output is not None and os.path.exists(output):
+    if output is not None and os.path.exists(output) and not overwrite:
         logger(f"Output file {output} exists. Aborting...")
         sys.exit(0)
 
