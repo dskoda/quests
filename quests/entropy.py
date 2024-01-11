@@ -8,7 +8,7 @@ from .matrix import cdist_Linf
 from .matrix import norm
 from .matrix import sumexp
 
-DEFAULT_BANDWIDTH = 0.015
+DEFAULT_BANDWIDTH = 0.085
 DEFAULT_BATCH = 10000
 
 
