@@ -94,7 +94,7 @@ def descriptor_x2(
                 ril = dm[i, atom_l]
                 wil = descriptor_weight(ril, cutoff)
 
-                x2_jl = (wij * wil) / (dm[atom_j, atom_l] + eps)
+                x2_jl = math.sqrt(wij * wil) / (dm[atom_j, atom_l] + eps)
                 rjl[j, l] = x2_jl
                 rjl[l, j] = x2_jl
 
