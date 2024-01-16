@@ -92,8 +92,8 @@ def entropy(
     entropy_time = t.time
     logger(f"Entropy computed in: {format_time(entropy_time)}")
 
-    logger(f"Dataset entropy: {entropy: .2f} (nats)")
-    logger(f"Max theoretical entropy: {np.log(x.shape[0]): .2f} (nats)")
+    logger(f"Dataset entropy: {entropy: .3f} (nats)")
+    logger(f"Max theoretical entropy: {np.log(x.shape[0]): .3f} (nats)")
 
     if output is not None:
         results = {
