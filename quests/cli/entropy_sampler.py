@@ -1,14 +1,14 @@
-import sys
-import os
 import json
+import os
+import sys
 import time
 from typing import List
 
 import click
 import numba as nb
 import numpy as np
-from ase.io import read
 from ase import Atoms
+from ase.io import read
 
 from .log import format_time
 from .log import logger
@@ -17,6 +17,7 @@ from quests.descriptor import DEFAULT_K
 from quests.descriptor import get_descriptors
 from quests.entropy import DEFAULT_BANDWIDTH
 from quests.entropy import DEFAULT_BATCH
+from quests.entropy import get_bandwidth
 from quests.entropy import perfect_entropy
 from quests.tools.time import Timer
 
@@ -80,6 +81,12 @@ def get_sampling_fn(dset: List[Atoms], x: np.ndarray, sample, sample_dataset):
     help=f"Bandwidth when computing the kernel (default: {DEFAULT_BANDWIDTH})",
 )
 @click.option(
+    "--estimate_bw",
+    is_flag=True,
+    default=False,
+    help="If True, estimates the bandwidth based on the density",
+)
+@click.option(
     "-s",
     "--sample",
     type=int,
@@ -132,6 +139,7 @@ def entropy_sampler(
     cutoff,
     nbrs,
     bandwidth,
+    estimate_bw,
     sample,
     sample_dataset,
     num_runs,
@@ -155,6 +163,10 @@ def entropy_sampler(
     descriptor_time = t.time
     logger(f"Descriptors built in: {format_time(descriptor_time)}")
     logger(f"Descriptors shape: {x.shape}")
+
+    if estimate_bw:
+        volume = np.mean([at.get_volume() / len(at) for at in dset])
+        bandwidth = get_bandwidth(volume)
 
     # if dataset is smaller than sample, no need to
     # run multiple times
