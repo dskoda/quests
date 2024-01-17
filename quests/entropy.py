@@ -106,3 +106,20 @@ def delta_entropy(
             entropies[j] = math.log(entropies[j] / N)
 
     return entropies
+
+
+@nb.njit(fastmath=True, cache=True)
+def get_bandwidth(volume: float):
+    """Estimate of the bandwidth based on the dependence 
+        of the entropy w.r.t. volume per atom (or density).
+        The hard-coded parameters here were shown to work
+        well for some systems.
+
+    Arguments:
+        volume (float): volume per atom (in Å^3/atom)
+
+    Returns:
+        bandwidth (float)
+    """
+    z = volume / 10.896
+    return 0.0897141 * np.exp(-0.5 * z ** 2) + 0.0119417
