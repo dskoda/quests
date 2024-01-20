@@ -4,9 +4,9 @@ import numba as nb
 import numpy as np
 
 from .matrix import cdist
-from .matrix import cdist_Linf
 from .matrix import norm
 from .matrix import sumexp
+from .geometry import cutoff_fn
 
 DEFAULT_BANDWIDTH = 0.085
 DEFAULT_BATCH = 10000
@@ -109,7 +109,7 @@ def delta_entropy(
 
 
 @nb.njit(fastmath=True, cache=True)
-def get_bandwidth(volume: float):
+def get_bandwidth(volume: float, method: str = "gaussian"):
     """Estimate of the bandwidth based on the dependence 
         of the entropy w.r.t. volume per atom (or density).
         The hard-coded parameters here were shown to work
@@ -121,5 +121,10 @@ def get_bandwidth(volume: float):
     Returns:
         bandwidth (float)
     """
-    z = volume / 10.896
-    return 0.0897141 * np.exp(-0.5 * z ** 2) + 0.0119417
+    if method == "gaussian":
+        z = volume / 10.896
+        return 0.0897141 * np.exp(-0.5 * z ** 2) + 0.0119417
+
+    if method == "cutoff":
+        z = np.power(np.log(volume), 2)
+        return 0.086164 * cutoff_fn(z, 11.61172) + 0.016

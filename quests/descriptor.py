@@ -12,6 +12,7 @@ from .matrix import cdist
 from .matrix import inverse_3d
 from .matrix import pdist
 from .matrix import stack_xyz
+from .geometry import cutoff_fn
 
 IntList = types.ListType(types.int64)
 FloatArrayList = types.Array(types.float64, 1, "C")
@@ -19,15 +20,6 @@ FloatArrayList = types.Array(types.float64, 1, "C")
 DEFAULT_CUTOFF: float = 5.0
 DEFAULT_K: int = 32
 EPS: float = 1e-15
-
-
-@nb.njit(fastmath=True, cache=True)
-def descriptor_weight(r: float, cutoff: float):
-    if r > cutoff:
-        r = cutoff
-
-    z = r / cutoff
-    return (1 - z**2) ** 2
 
 
 @nb.njit(fastmath=True, cache=True)
@@ -56,7 +48,7 @@ def descriptor_x1(
         for j in range(jmax):
             atom_j = sorter[i, j + 1]
             rij = dm[i, atom_j] + eps
-            wij = descriptor_weight(rij, cutoff)
+            wij = cutoff_fn(rij, cutoff)
             x1[i, j] = wij / rij
 
     return x1
@@ -87,12 +79,12 @@ def descriptor_x2(
         for j in range(jmax):
             atom_j = sorter[i, j + 1]
             rij = dm[i, atom_j]
-            wij = descriptor_weight(rij, cutoff)
+            wij = cutoff_fn(rij, cutoff)
 
             for l in range(j + 1, jmax):
                 atom_l = sorter[i, l + 1]
                 ril = dm[i, atom_l]
-                wil = descriptor_weight(ril, cutoff)
+                wil = cutoff_fn(ril, cutoff)
 
                 x2_jl = math.sqrt(wij * wil) / (dm[atom_j, atom_l] + eps)
                 rjl[j, l] = x2_jl
