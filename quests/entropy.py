@@ -8,8 +8,8 @@ from .matrix import norm
 from .matrix import sumexp
 from .geometry import cutoff_fn
 
-DEFAULT_BANDWIDTH = 0.085
-DEFAULT_BATCH = 10000
+DEFAULT_BANDWIDTH = 0.015
+DEFAULT_BATCH = 20000
 
 
 @nb.njit(fastmath=True, cache=True)
