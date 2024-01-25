@@ -3,6 +3,7 @@ import time
 import argparse
 
 import numpy as np
+import numba as nb
 from ase.io import read
 
 from quests.cli.log import format_time
@@ -15,9 +16,10 @@ from quests.tools.time import Timer
 def compute_descriptors(file: str):
     logger(f"Loading and creating descriptors for file {file}")
     dset = read(file, index=":")
+    n_atoms = len(dset[0])
 
     with Timer() as t:
-        x = get_descriptors(dset)
+        x = get_descriptors(dset, k=n_atoms)
     descriptor_time = t.time
     logger(f"Descriptors built in: {format_time(descriptor_time)}")
 
@@ -67,6 +69,9 @@ def parse_arguments():
     parser.add_argument(
         "--n_samples", type=int, nargs="+", help="List of sample counts"
     )
+    parser.add_argument(
+        "--jobs", type=int, default=None, help="number of jobs"
+    )
     parser.add_argument("-o", "--output", type=str, default=None, help="Output file")
 
     return parser.parse_args()
@@ -74,6 +79,10 @@ def parse_arguments():
 
 def main():
     args = parse_arguments()
+
+    if args.jobs is not None:
+        nb.set_num_threads(args.jobs)
+
     x = compute_descriptors(args.file)
 
     results = []

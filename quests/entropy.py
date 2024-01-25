@@ -34,35 +34,68 @@ def perfect_entropy(
         entropy (float): entropy of the dataset given by `x`.
     """
     N = x.shape[0]
-    entropies = delta_entropy(x, x, h=h, batch_size=batch_size)
+    p_x = kernel_sum(x, x, h=h, batch_size=batch_size)
 
-    return -np.mean(entropies)
+    # normalizes the p(x) prior to the log for numerical stability
+    for j in range(N):
+        p_x[j] = math.log(p_x[j] / N)
+
+    return -np.mean(p_x)
 
 
-@nb.njit(fastmath=True, parallel=True, cache=True)
+@nb.njit(fastmath=True, cache=True)
 def delta_entropy(
     x: np.ndarray,
     y: np.ndarray,
     h: float = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,
 ):
-    """Computes the delta entropy of a dataset `x` using the dataset
-        `y` as a reference. The function uses a batch distance
-        calculation. This is necessary because the full distance matrix
-        often does not fit in the memory for a big dataset. This function
-        can be SLOW, despite the optimization of the computation, as it
-        does not approximate the results.
+    """Computes the differential entropy of a dataset `x` using the dataset
+        `y` as reference. This function can be SLOW, despite the optimization 
+        of the computation, as it does not approximate the results.
 
     Arguments:
-        x (np.ndarray): an (M, d) matrix with the descriptors
-        y (np.ndarray): an (N, d) matrix with the descriptors
+        x (np.ndarray): an (N, d) matrix with the descriptors of the test set
+        y (np.ndarray): an (N, d) matrix with the descriptors of the reference
         h (int): bandwidth for the Gaussian kernel
         batch_size (int): maximum batch size to consider when
             performing a distance calculation.
 
     Returns:
-        entropies (np.ndarray): a (M,) vector containing all
-            differential entropies of `x` computed with respect to `y`.
+        entropy (float): entropy of the dataset given by `x`.
+    """
+    N = x.shape[0]
+    p_x = kernel_sum(x, y, h=h, batch_size=batch_size)
+
+    for j in range(N):
+        p_x[j] = -math.log(p_x[j])
+
+    return p_x
+
+
+@nb.njit(fastmath=True, parallel=True, cache=True)
+def kernel_sum(
+    x: np.ndarray,
+    y: np.ndarray,
+    h: float = DEFAULT_BANDWIDTH,
+    batch_size: int = DEFAULT_BATCH,
+):
+    """Computes the kernel matrix K_ij for the descriptors x_i and y_j.
+        Because the entire matrix cannot fit in the memory, this function
+        automatically applies the kernel and sums the results, essentially
+        recovering the probability distribution p(x) up to a normalization
+        constant.
+
+    Arguments:
+        x (np.ndarray): an (M, d) matrix with the test descriptors
+        y (np.ndarray): an (N, d) matrix with the reference descriptors
+        h (int): bandwidth for the Gaussian kernel
+        batch_size (int): maximum batch size to consider when
+            performing a distance calculation.
+
+    Returns:
+        ki (np.ndarray): a (M,) vector containing the probability of x_i
+            given `y`
     """
     M = x.shape[0]
     max_step_x = math.ceil(M / batch_size)
@@ -75,7 +108,7 @@ def delta_entropy(
     norm_y = norm(y)
 
     # variables that are going to store the results
-    entropies = np.zeros(M, dtype=x.dtype)
+    p_x = np.zeros(M, dtype=x.dtype)
 
     # loops over rows and columns to compute the
     # distance matrix without keeping it entirely
@@ -99,13 +132,9 @@ def delta_entropy(
             z = sumexp(-0.5 * (z**2))
 
             for k in range(i, imax):
-                entropies[k] = entropies[k] + z[k - i]
+                p_x[k] = p_x[k] + z[k - i]
 
-        # after summing everything, we take the log
-        for j in range(i, imax):
-            entropies[j] = math.log(entropies[j] / N)
-
-    return entropies
+    return p_x
 
 
 @nb.njit(fastmath=True, cache=True)
