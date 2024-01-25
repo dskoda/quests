@@ -1,3 +1,4 @@
+import os
 import gc
 import json
 import time
@@ -107,6 +108,7 @@ def dH(
     x = descriptors_from_file(test, nbrs, cutoff)
     ref = descriptors_from_file(reference, nbrs, cutoff)
 
+    logger("Computing dH...")
     with Timer() as t:
         delta = delta_entropy(x, ref, h=bandwidth, batch_size=batch_size)
     entropy_time = t.time
