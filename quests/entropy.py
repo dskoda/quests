@@ -197,6 +197,8 @@ def weighted_kernel_sum(
             z = cdist(x_batch, y_batch, x_batch_norm, y_batch_norm)
             z = z / h
             z = -0.5 * (z**2)
+
+            # computed the expected value of the error
             p = sumexp(z)
             wp = wsumexp(z, w_batch)
 
