@@ -62,6 +62,12 @@ from quests.tools.time import Timer
     help="path to the json file that will contain the output\
             (default: no output produced)",
 )
+@click.option(
+    "--overwrite",
+    is_flag=True,
+    default=False,
+    help="If True, overwrite the output file",
+)
 def entropy(
     file,
     cutoff,
@@ -70,7 +76,12 @@ def entropy(
     jobs,
     batch_size,
     output,
+    overwrite,
 ):
+    if output is not None and os.path.exists(output) and not overwrite:
+        logger(f"Output file {output} exists. Aborting...")
+        sys.exit(0)
+
     if jobs is not None:
         nb.set_num_threads(jobs)
 
