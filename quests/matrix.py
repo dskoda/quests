@@ -28,6 +28,30 @@ def sumexp(X):
 
 
 @nb.njit(fastmath=True)
+def wsumexp(X, w):
+    """weighted sumexp optimized for numba. Does not check any
+        variable and can be unstable, but it's really fast.
+
+    Arguments:
+        X (np.ndarray): an (N, d) matrix with the values. The
+            summation will happen over the axis 1.
+        w (np.ndarray): a (d, ) vector with the weights.
+
+    Returns:
+        wsumexp (np.ndarray): sum(w * exp(X), axis=1)
+    """
+    result = np.empty(X.shape[0], dtype=X.dtype)
+    for i in range(X.shape[0]):
+        _sum = 0.0
+        for j in range(X.shape[1]):
+            _sum += math.exp(X[i, j]) * w[j]
+
+        result[i] = _sum
+
+    return result
+
+
+@nb.njit(fastmath=True)
 def logsumexp(X):
     """logsumexp optimized for numba. Can lead to numerical
         instabilities, but it's really fast.
