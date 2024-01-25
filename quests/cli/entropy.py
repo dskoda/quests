@@ -1,3 +1,4 @@
+import os
 import gc
 import json
 import time
@@ -16,6 +17,23 @@ from quests.entropy import DEFAULT_BANDWIDTH
 from quests.entropy import DEFAULT_BATCH
 from quests.entropy import perfect_entropy
 from quests.tools.time import Timer
+
+
+def descriptors_from_file(file, k, cutoff):
+    if file.endswith(".npz"):
+        with Timer() as t:
+            with open(file, "rb") as f:
+                x = np.load(f)
+        descriptor_time = t.time
+        return x, descriptor_time
+
+    dset = read(file, index=":")
+
+    with Timer() as t:
+        x = get_descriptors(dset, k=k, cutoff=cutoff)
+    descriptor_time = t.time
+
+    return x, descriptor_time
 
 
 @click.command("entropy")
@@ -86,17 +104,9 @@ def entropy(
         nb.set_num_threads(jobs)
 
     logger(f"Loading and creating descriptors for file {file}")
-    dset = read(file, index=":")
-
-    with Timer() as t:
-        x = get_descriptors(dset, k=nbrs, cutoff=cutoff)
-    descriptor_time = t.time
+    x, descriptor_time = descriptors_from_file(file, k=nbrs, cutoff=cutoff)
     logger(f"Descriptors built in: {format_time(descriptor_time)}")
     logger(f"Descriptors shape: {x.shape}")
-
-    # invoke garbage collector to save memory
-    del dset
-    gc.collect()
 
     with Timer() as t:
         entropy = perfect_entropy(x, h=bandwidth, batch_size=batch_size)
