@@ -91,14 +91,16 @@ def main():
 
         x = compute_descriptors(os.path.join(args.folder, f))
 
-        pred_errors = weighted_kernel_sum(x, ref, errs, h=args.bandwidth, batch_size=args.batch_size)
+        pred_errors, p_x = weighted_kernel_sum(x, ref, errs, h=args.bandwidth, batch_size=args.batch_size)
+        logp = -np.log(p_x)
 
         data = {
             "reference": args.reference,
             "root_path": args.folder,
             "dset": f,
             "bandwidth": args.bandwidth,
-            "error": list(pred_errors),
+            "pred_errors": list(pred_errors),
+            "delta_entropy": list(logp),
         }
 
         with path.open("w") as f:
