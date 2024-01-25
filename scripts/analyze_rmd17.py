@@ -13,13 +13,14 @@ from quests.entropy import perfect_entropy
 from quests.tools.time import Timer
 
 
+NBRS = 24
+
 def compute_descriptors(file: str):
     logger(f"Loading and creating descriptors for file {file}")
     dset = read(file, index=":")
-    n_atoms = len(dset[0])
 
     with Timer() as t:
-        x = get_descriptors(dset, k=n_atoms)
+        x = get_descriptors(dset, k=NBRS)
     descriptor_time = t.time
     logger(f"Descriptors built in: {format_time(descriptor_time)}")
 
