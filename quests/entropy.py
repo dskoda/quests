@@ -210,7 +210,6 @@ def weighted_kernel_sum(
     return w_x, p_x
 
 
-@nb.njit(fastmath=True, cache=True)
 def get_bandwidth(volume: float, method: str = "gaussian"):
     """Estimate of the bandwidth based on the dependence
         of the entropy w.r.t. volume per atom (or density).
