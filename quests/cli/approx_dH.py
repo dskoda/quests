@@ -1,0 +1,134 @@
+import os
+import gc
+import sys
+import json
+import time
+
+import click
+import numba as nb
+import numpy as np
+from ase.io import read
+
+from .log import format_time
+from .log import logger
+from quests.descriptor import DEFAULT_CUTOFF
+from quests.descriptor import DEFAULT_K
+from quests.descriptor import get_descriptors
+from quests.entropy import DEFAULT_BANDWIDTH
+from quests.entropy import DEFAULT_BATCH
+from quests.entropy import DEFAULT_UQ_NBRS
+from quests.entropy import approx_dH
+from quests.tools.time import Timer
+
+
+def descriptors_from_file(file, k, cutoff):
+    if file.endswith(".npz"):
+        with open(file, "rb") as f:
+            return np.load(f)
+
+    logger(f"Loading and creating descriptors for file {file}")
+    dset = read(file, index=":")
+
+    with Timer() as t:
+        x = get_descriptors(dset, k=k, cutoff=cutoff)
+    descriptor_time = t.time
+    logger(f"Descriptors built in: {format_time(descriptor_time)}")
+    logger(f"Descriptors shape: {x.shape}")
+
+    return x
+
+
+@click.command("approx_dH")
+@click.argument("test", required=1)
+@click.argument("reference", required=1)
+@click.option(
+    "-c",
+    "--cutoff",
+    type=float,
+    default=DEFAULT_CUTOFF,
+    help=f"Cutoff (in Å) for computing the neighbor list (default: {DEFAULT_CUTOFF:.1f})",
+)
+@click.option(
+    "-k",
+    "--nbrs",
+    type=int,
+    default=DEFAULT_K,
+    help=f"Number of neighbors when creating the descriptor (default: {DEFAULT_K})",
+)
+@click.option(
+    "-n",
+    "--uq_nbrs",
+    type=int,
+    default=DEFAULT_UQ_NBRS,
+    help=f"Number of neighbors when creating the descriptor (default: {DEFAULT_UQ_NBRS})",
+)
+@click.option(
+    "-b",
+    "--bandwidth",
+    type=float,
+    default=DEFAULT_BANDWIDTH,
+    help=f"Bandwidth when computing the kernel (default: {DEFAULT_BANDWIDTH})",
+)
+@click.option(
+    "-j",
+    "--jobs",
+    type=int,
+    default=None,
+    help="Number of jobs to distribute the calculation in (default: all)",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=str,
+    default=None,
+    help="path to the json file that will contain the output\
+            (default: no output produced)",
+)
+@click.option(
+    "--overwrite",
+    is_flag=True,
+    default=False,
+    help="If True, overwrite the output file",
+)
+def dH(
+    test,
+    reference,
+    cutoff,
+    nbrs,
+    bandwidth,
+    jobs,
+    output,
+    overwrite,
+):
+    if output is not None and os.path.exists(output) and not overwrite:
+        logger(f"Output file {output} exists. Aborting...")
+        sys.exit(0)
+
+    if jobs is not None:
+        nb.set_num_threads(jobs)
+
+    x = descriptors_from_file(test, nbrs, cutoff)
+    ref = descriptors_from_file(reference, nbrs, cutoff)
+
+    logger("Computing dH...")
+    with Timer() as t:
+        delta = approx_dH(x, ref, h=bandwidth, n=uq_nbrs)
+    entropy_time = t.time
+    logger(f"dH computed in: {format_time(entropy_time)}")
+
+    if output is not None:
+        results = {
+            "reference_file": reference,
+            "test_file": test,
+            "test_envs": x.shape[0],
+            "ref_envs": ref.shape[0],
+            "k": nbrs,
+            "n": uq_nbrs,
+            "cutoff": cutoff,
+            "bandwidth": bandwidth,
+            "jobs": jobs,
+            "delta_entropy": list(delta),
+        }
+
+        with open(output, "w") as f:
+            json.dump(results, f)

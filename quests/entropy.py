@@ -11,6 +11,7 @@ from .matrix import wsumexp
 
 DEFAULT_BANDWIDTH = 0.015
 DEFAULT_BATCH = 20000
+DEFAULT_UQ_NBRS = 3
 
 
 @nb.njit(fastmath=True, cache=True)
@@ -235,7 +236,7 @@ def get_bandwidth(volume: float, method: str = "gaussian"):
 
 
 def approx_dH(
-    x: np.ndarray, y: np.ndarray, h: float = DEFAULT_BANDWIDTH, k: int = 5, **kwargs
+    x: np.ndarray, y: np.ndarray, h: float = DEFAULT_BANDWIDTH, n: int = DEFAULT_UQ_NBRS, **kwargs
 ):
     """Computes an approximate differential entropy of a dataset `x` using the dataset
         `y` as reference. This function was optimized to be FAST and multithreaded, but
@@ -257,7 +258,7 @@ def approx_dH(
     index = nnd.NNDescent(y, n_neighbors=5, **kwargs)
     index.prepare()
 
-    _, d = index.query(x, k=k)
+    _, d = index.query(x, k=n)
     z = d / h
     p_x = sumexp(-0.5 * z**2)
 
