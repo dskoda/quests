@@ -235,7 +235,7 @@ def get_bandwidth(volume: float, method: str = "gaussian"):
         return 0.086164 * cutoff_fn(z, 11.61172) + 0.016
 
 
-def approx_dH(
+def approx_delta_entropy(
     x: np.ndarray, y: np.ndarray, h: float = DEFAULT_BANDWIDTH, n: int = DEFAULT_UQ_NBRS, **kwargs
 ):
     """Computes an approximate differential entropy of a dataset `x` using the dataset
