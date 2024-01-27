@@ -17,7 +17,7 @@ from quests.descriptor import get_descriptors
 from quests.entropy import DEFAULT_BANDWIDTH
 from quests.entropy import DEFAULT_BATCH
 from quests.entropy import DEFAULT_UQ_NBRS
-from quests.entropy import approx_dH
+from quests.entropy import approx_delta_entropy
 from quests.tools.time import Timer
 
 
@@ -90,11 +90,12 @@ def descriptors_from_file(file, k, cutoff):
     default=False,
     help="If True, overwrite the output file",
 )
-def dH(
+def approx_dH(
     test,
     reference,
     cutoff,
     nbrs,
+    uq_nbrs,
     bandwidth,
     jobs,
     output,
@@ -112,7 +113,7 @@ def dH(
 
     logger("Computing dH...")
     with Timer() as t:
-        delta = approx_dH(x, ref, h=bandwidth, n=uq_nbrs)
+        delta = approx_delta_entropy(x, ref, h=bandwidth, n=uq_nbrs)
     entropy_time = t.time
     logger(f"dH computed in: {format_time(entropy_time)}")
 
@@ -127,7 +128,7 @@ def dH(
             "cutoff": cutoff,
             "bandwidth": bandwidth,
             "jobs": jobs,
-            "delta_entropy": list(delta),
+            "delta_entropy": list(delta.astype(float)),
         }
 
         with open(output, "w") as f:
