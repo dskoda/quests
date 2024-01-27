@@ -342,6 +342,7 @@ def get_descriptors(
     k: int = DEFAULT_K,
     cutoff: float = DEFAULT_CUTOFF,
     concat: bool = True,
+    dtype: str = "float32",
 ):
     x1, x2 = [], []
     for atoms in dset:
@@ -359,5 +360,8 @@ def get_descriptors(
         x1 = np.concatenate(x1)
         x2 = np.concatenate(x2)
         return np.concatenate([x1, x2], axis=1)
+
+    x1 = x1.astype(dtype)
+    x2 = x2.astype(dtype)
 
     return x1, x2
