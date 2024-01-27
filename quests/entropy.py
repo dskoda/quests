@@ -232,3 +232,33 @@ def get_bandwidth(volume: float, method: str = "gaussian"):
     if method == "cutoff":
         z = np.power(np.log(volume), 2)
         return 0.086164 * cutoff_fn(z, 11.61172) + 0.016
+
+
+def approx_dH(
+    x: np.ndarray, y: np.ndarray, h: float = DEFAULT_BANDWIDTH, k: int = 5, **kwargs
+):
+    """Computes an approximate differential entropy of a dataset `x` using the dataset
+        `y` as reference. This function was optimized to be FAST and multithreaded, but
+        the recall may not be 100%. If recall is an issue, please consult the PyNNDescent
+        documentation for the choice of keywords.
+
+    Arguments:
+        x (np.ndarray): an (N, d) matrix with the descriptors of the test set
+        y (np.ndarray): an (N, d) matrix with the descriptors of the reference
+        h (int): bandwidth for the Gaussian kernel
+        k (int): number of nearest-neighbors to take into account when computing
+            the approximate dH
+
+    Returns:
+        dH (np.ndarray): approx. differential entropy of the dataset given by `x`.
+    """
+    import pynndescent as nnd
+
+    index = nnd.NNDescent(y, n_neighbors=5, **kwargs)
+    index.prepare()
+
+    _, d = index.query(x, k=k)
+    z = d / h
+    p_x = sumexp(-0.5 * z**2)
+
+    return -np.log(p_x)
