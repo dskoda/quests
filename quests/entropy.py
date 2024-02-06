@@ -19,6 +19,7 @@ def perfect_entropy(
     x: np.ndarray,
     h: float = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,
+    eps: float = 1e-10
 ):
     """Computes the perfect entropy of a dataset using a batch distance
         calculation. This is necessary because the full distance matrix
@@ -31,12 +32,15 @@ def perfect_entropy(
         h (int): bandwidth for the Gaussian kernel
         batch_size (int): maximum batch size to consider when
             performing a distance calculation.
+        eps (float): numerical stability factor to prevent the
+            log from becoming -inf
 
     Returns:
         entropy (float): entropy of the dataset given by `x`.
     """
     N = x.shape[0]
     p_x = kernel_sum(x, x, h=h, batch_size=batch_size)
+    p_x = p_x + eps
 
     # normalizes the p(x) prior to the log for numerical stability
     for j in range(N):
@@ -51,6 +55,7 @@ def delta_entropy(
     y: np.ndarray,
     h: float = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,
+    eps: float = 1e-10
 ):
     """Computes the differential entropy of a dataset `x` using the dataset
         `y` as reference. This function can be SLOW, despite the optimization
@@ -62,12 +67,15 @@ def delta_entropy(
         h (int): bandwidth for the Gaussian kernel
         batch_size (int): maximum batch size to consider when
             performing a distance calculation.
+        eps (float): numerical stability factor to prevent the
+            log from becoming -inf
 
     Returns:
         entropy (float): entropy of the dataset given by `x`.
     """
     N = x.shape[0]
     p_x = kernel_sum(x, y, h=h, batch_size=batch_size)
+    p_x = p_x + eps
 
     for j in range(N):
         p_x[j] = -math.log(p_x[j])
@@ -117,14 +125,14 @@ def kernel_sum(
     # in the memory
     for step_x in nb.prange(0, max_step_x):
         i = step_x * batch_size
-        imax = min(i + batch_size, M)
+        imax = min(i + batch_size, M - 1)
         x_batch = x[i:imax]
         x_batch_norm = norm_x[i:imax]
 
         # loops over all columns in batches to prevent memory overflow
         for step_y in range(0, max_step_y):
             j = step_y * batch_size
-            jmax = min(j + batch_size, N)
+            jmax = min(j + batch_size, N - 1)
             y_batch = y[j:jmax]
             y_batch_norm = norm_y[j:jmax]
 
