@@ -129,6 +129,7 @@ def approx_dH(
             "bandwidth": bandwidth,
             "jobs": jobs,
             "delta_entropy": list(delta.astype(float)),
+            "time": entropy_time,
         }
 
         with open(output, "w") as f:
