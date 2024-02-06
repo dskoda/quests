@@ -29,7 +29,7 @@ def sample_indices(size: int, n: int):
     return np.random.randint(0, size, n)
 
 
-def get_sampling_fn(dset: List[Atoms], x: np.ndarray, sample):
+def get_sampling_fn(x: np.ndarray, sample):
     # sample environments
     def sample_items():
         indices = sample_indices(len(x), sample)
@@ -129,7 +129,7 @@ def entropy_sampler(
     if jobs is not None:
         nb.set_num_threads(jobs)
 
-    x = descriptors_from_file(file, k=nbrs, cutoff=cutoff)
+    x, descriptor_time = descriptors_from_file(file, k=nbrs, cutoff=cutoff)
 
     if estimate_bw:
         volume = np.mean([at.get_volume() / len(at) for at in dset])
@@ -141,7 +141,7 @@ def entropy_sampler(
         num_runs = 1
 
     # determine how the dataset is going to be sampled
-    sample_items = get_sampling_fn(dset, x, sample)
+    sample_items = get_sampling_fn(x, sample)
 
     # compute the entropy `num_runs` times
     entropies = []
