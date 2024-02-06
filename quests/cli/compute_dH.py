@@ -7,10 +7,10 @@ import time
 import click
 import numba as nb
 import numpy as np
-from ase.io import read
 
 from .log import format_time
 from .log import logger
+from .load_file import descriptors_from_file
 from quests.descriptor import DEFAULT_CUTOFF
 from quests.descriptor import DEFAULT_K
 from quests.descriptor import get_descriptors
@@ -18,23 +18,6 @@ from quests.entropy import DEFAULT_BANDWIDTH
 from quests.entropy import DEFAULT_BATCH
 from quests.entropy import delta_entropy
 from quests.tools.time import Timer
-
-
-def descriptors_from_file(file, k, cutoff):
-    if file.endswith(".npz"):
-        with open(file, "rb") as f:
-            return np.load(f)
-
-    logger(f"Loading and creating descriptors for file {file}")
-    dset = read(file, index=":")
-
-    with Timer() as t:
-        x = get_descriptors(dset, k=k, cutoff=cutoff)
-    descriptor_time = t.time
-    logger(f"Descriptors built in: {format_time(descriptor_time)}")
-    logger(f"Descriptors shape: {x.shape}")
-
-    return x
 
 
 @click.command("dH")
