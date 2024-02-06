@@ -100,12 +100,10 @@ def kernel_sum(
             given `y`
     """
     M = x.shape[0]
-    batch_size_x = min(M, batch_size)
-    max_step_x = math.ceil(M / batch_size_x)
+    max_step_x = math.ceil(M / batch_size)
 
     N = y.shape[0]
-    batch_size_y = min(N, batch_size)
-    max_step_y = math.ceil(N / batch_size_y)
+    max_step_y = math.ceil(N / batch_size)
 
     # precomputing the norms saves us some time
     norm_x = norm(x)
@@ -118,15 +116,15 @@ def kernel_sum(
     # distance matrix without keeping it entirely
     # in the memory
     for step_x in nb.prange(0, max_step_x):
-        i = step_x * batch_size_x
-        imax = min(i + batch_size_x, M)
+        i = step_x * batch_size
+        imax = min(i + batch_size, M)
         x_batch = x[i:imax]
         x_batch_norm = norm_x[i:imax]
 
         # loops over all columns in batches to prevent memory overflow
         for step_y in range(0, max_step_y):
-            j = step_y * batch_size_y
-            jmax = min(j + batch_size_y, N)
+            j = step_y * batch_size
+            jmax = min(j + batch_size, N)
             y_batch = y[j:jmax]
             y_batch_norm = norm_y[j:jmax]
 
