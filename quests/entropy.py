@@ -30,8 +30,6 @@ def perfect_entropy(
         h (int): bandwidth for the Gaussian kernel
         batch_size (int): maximum batch size to consider when
             performing a distance calculation.
-        eps (float): numerical stability factor to prevent the
-            log from becoming -inf
 
     Returns:
         entropy (float): entropy of the dataset given by `x`.
@@ -61,15 +59,34 @@ def delta_entropy(
         h (int): bandwidth for the Gaussian kernel
         batch_size (int): maximum batch size to consider when
             performing a distance calculation.
-        eps (float): numerical stability factor to prevent the
-            log from becoming -inf
 
     Returns:
         entropy (float): entropy of the dataset given by `x`.
     """
-    N = x.shape[0]
     p_x = kernel_sum(x, y, h=h, batch_size=batch_size)
     return -np.log(p_x)
+
+
+def diversity(
+    x: np.ndarray,
+    h: float = DEFAULT_BANDWIDTH,
+    batch_size: int = DEFAULT_BATCH,
+):
+    """Computes the diversity of a dataset `x` by assuming a sum over the 
+        inverse p(x). This approximates the number of unique data points 
+        in the system, as Kij >= 1 for a kernel matrix of a dataset.
+
+    Arguments:
+        x (np.ndarray): an (N, d) matrix with the descriptors of the dataset
+        h (int): bandwidth for the Gaussian kernel
+        batch_size (int): maximum batch size to consider when
+            performing a distance calculation.
+
+    Returns:
+        entropy (float): entropy of the dataset given by `x`.
+    """
+    p_x = kernel_sum(x, x, h=h, batch_size=batch_size)
+    return np.sum(1 / p_x)
 
 
 @nb.njit(fastmath=True, parallel=True, cache=True)
