@@ -91,8 +91,8 @@ def approx_dH(
     if jobs is not None:
         nb.set_num_threads(jobs)
 
-    x = descriptors_from_file(test, nbrs, cutoff)
-    ref = descriptors_from_file(reference, nbrs, cutoff)
+    x, _ = descriptors_from_file(test, nbrs, cutoff)
+    ref, _ = descriptors_from_file(reference, nbrs, cutoff)
 
     logger("Computing dH...")
     with Timer() as t:
