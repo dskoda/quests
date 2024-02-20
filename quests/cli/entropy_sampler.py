@@ -1,22 +1,23 @@
-import sys
-import os
 import json
+import os
+import sys
 import time
 from typing import List
 
 import click
 import numba as nb
 import numpy as np
-from ase.io import read
 from ase import Atoms
 
 from .log import format_time
 from .log import logger
+from .load_file import descriptors_from_file
 from quests.descriptor import DEFAULT_CUTOFF
 from quests.descriptor import DEFAULT_K
 from quests.descriptor import get_descriptors
 from quests.entropy import DEFAULT_BANDWIDTH
 from quests.entropy import DEFAULT_BATCH
+from quests.entropy import get_bandwidth
 from quests.entropy import perfect_entropy
 from quests.tools.time import Timer
 
@@ -28,30 +29,11 @@ def sample_indices(size: int, n: int):
     return np.random.randint(0, size, n)
 
 
-def get_sampling_fn(dset: List[Atoms], x: np.ndarray, sample, sample_dataset):
-    if not sample_dataset:
-        # sample environments
-        def sample_items():
-            indices = sample_indices(len(x), sample)
-            return x[indices]
-        
-        return sample_items
-
-    # create indices for the dataset
-    start = 0
-    dset_indices = []
-    for i, atoms in enumerate(dset):
-        num_atoms = len(atoms)
-        idx = np.arange(start, start + num_atoms, 1, dtype=int)
-        dset_indices.append(idx)
-        start = start + num_atoms
-
+def get_sampling_fn(x: np.ndarray, sample):
+    # sample environments
     def sample_items():
-        indices = sample_indices(len(dset_indices), sample) 
-        x_indices = np.concatenate([
-            dset_indices[i] for i in indices
-        ])
-        return x[x_indices]
+        indices = sample_indices(len(x), sample)
+        return x[indices]
 
     return sample_items
 
@@ -80,18 +62,18 @@ def get_sampling_fn(dset: List[Atoms], x: np.ndarray, sample, sample_dataset):
     help=f"Bandwidth when computing the kernel (default: {DEFAULT_BANDWIDTH})",
 )
 @click.option(
+    "--estimate_bw",
+    is_flag=True,
+    default=False,
+    help="If True, estimates the bandwidth based on the density",
+)
+@click.option(
     "-s",
     "--sample",
     type=int,
     default=1000,
     help="If given, takes a sample of the environments before computing \
             its entropy (default: uses the entire dataset)",
-)
-@click.option(
-    "--sample_dataset",
-    is_flag=True,
-    default=False,
-    help="If True, subsamples the dataset as opposed to the environment.",
 )
 @click.option(
     "-n",
@@ -121,33 +103,37 @@ def get_sampling_fn(dset: List[Atoms], x: np.ndarray, sample, sample_dataset):
     help="path to the json file that will contain the output\
             (default: no output produced)",
 )
+@click.option(
+    "--overwrite",
+    is_flag=True,
+    default=False,
+    help="If True, overwrite the output file",
+)
 def entropy_sampler(
     file,
     cutoff,
     nbrs,
     bandwidth,
+    estimate_bw,
     sample,
-    sample_dataset,
     num_runs,
     jobs,
     batch_size,
     output,
+    overwrite,
 ):
-    if output is not None and os.path.exists(output):
+    if output is not None and os.path.exists(output) and not overwrite:
         logger(f"Output file {output} exists. Aborting...")
         sys.exit(0)
 
     if jobs is not None:
         nb.set_num_threads(jobs)
 
-    logger(f"Loading and creating descriptors for file {file}")
-    dset = read(file, index=":")
+    x, descriptor_time = descriptors_from_file(file, k=nbrs, cutoff=cutoff)
 
-    with Timer() as t:
-        x = get_descriptors(dset, k=nbrs, cutoff=cutoff)
-    descriptor_time = t.time
-    logger(f"Descriptors built in: {format_time(descriptor_time)}")
-    logger(f"Descriptors shape: {x.shape}")
+    if estimate_bw:
+        volume = np.mean([at.get_volume() / len(at) for at in dset])
+        bandwidth = get_bandwidth(volume)
 
     # if dataset is smaller than sample, no need to
     # run multiple times
@@ -155,7 +141,7 @@ def entropy_sampler(
         num_runs = 1
 
     # determine how the dataset is going to be sampled
-    sample_items = get_sampling_fn(dset, x, sample, sample_dataset)
+    sample_items = get_sampling_fn(x, sample)
 
     # compute the entropy `num_runs` times
     entropies = []
@@ -183,7 +169,6 @@ def entropy_sampler(
             "bandwidth": bandwidth,
             "jobs": jobs,
             "sample": sample,
-            "sample_dataset": sample_dataset,
             "num_runs": num_runs,
             "entropies": entropies,
             "descriptor_time": descriptor_time,

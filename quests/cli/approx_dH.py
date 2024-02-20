@@ -1,5 +1,6 @@
 import os
 import gc
+import sys
 import json
 import time
 
@@ -15,12 +16,14 @@ from quests.descriptor import DEFAULT_K
 from quests.descriptor import get_descriptors
 from quests.entropy import DEFAULT_BANDWIDTH
 from quests.entropy import DEFAULT_BATCH
-from quests.entropy import perfect_entropy
+from quests.entropy import DEFAULT_UQ_NBRS
+from quests.entropy import approx_delta_entropy
 from quests.tools.time import Timer
 
 
-@click.command("entropy")
-@click.argument("file", required=1)
+@click.command("approx_dH")
+@click.argument("test", required=1)
+@click.argument("reference", required=1)
 @click.option(
     "-c",
     "--cutoff",
@@ -34,6 +37,13 @@ from quests.tools.time import Timer
     type=int,
     default=DEFAULT_K,
     help=f"Number of neighbors when creating the descriptor (default: {DEFAULT_K})",
+)
+@click.option(
+    "-n",
+    "--uq_nbrs",
+    type=int,
+    default=DEFAULT_UQ_NBRS,
+    help=f"Number of neighbors when creating the descriptor (default: {DEFAULT_UQ_NBRS})",
 )
 @click.option(
     "-b",
@@ -50,12 +60,6 @@ from quests.tools.time import Timer
     help="Number of jobs to distribute the calculation in (default: all)",
 )
 @click.option(
-    "--batch_size",
-    type=int,
-    default=DEFAULT_BATCH,
-    help=f"Size of the batches when computing the distances (default: {DEFAULT_BATCH})",
-)
-@click.option(
     "-o",
     "--output",
     type=str,
@@ -69,13 +73,14 @@ from quests.tools.time import Timer
     default=False,
     help="If True, overwrite the output file",
 )
-def entropy(
-    file,
+def approx_dH(
+    test,
+    reference,
     cutoff,
     nbrs,
+    uq_nbrs,
     bandwidth,
     jobs,
-    batch_size,
     output,
     overwrite,
 ):
@@ -86,31 +91,29 @@ def entropy(
     if jobs is not None:
         nb.set_num_threads(jobs)
 
-    logger(f"Loading and creating descriptors for file {file}")
-    x, descriptor_time = descriptors_from_file(file, k=nbrs, cutoff=cutoff)
-    logger(f"Descriptors built in: {format_time(descriptor_time)}")
-    logger(f"Descriptors shape: {x.shape}")
+    x = descriptors_from_file(test, nbrs, cutoff)
+    ref = descriptors_from_file(reference, nbrs, cutoff)
 
+    logger("Computing dH...")
     with Timer() as t:
-        entropy = perfect_entropy(x, h=bandwidth, batch_size=batch_size)
+        delta = approx_delta_entropy(x, ref, h=bandwidth, n=uq_nbrs)
     entropy_time = t.time
-    logger(f"Entropy computed in: {format_time(entropy_time)}")
-
-    logger(f"Dataset entropy: {entropy: .3f} (nats)")
-    logger(f"Max theoretical entropy: {np.log(x.shape[0]): .3f} (nats)")
+    logger(f"dH computed in: {format_time(entropy_time)}")
 
     if output is not None:
         results = {
-            "file": file,
-            "n_envs": x.shape[0],
+            "reference_file": reference,
+            "test_file": test,
+            "test_envs": x.shape[0],
+            "ref_envs": ref.shape[0],
             "k": nbrs,
+            "n": uq_nbrs,
             "cutoff": cutoff,
             "bandwidth": bandwidth,
             "jobs": jobs,
-            "entropy": entropy,
-            "descriptor_time": descriptor_time,
-            "entropy_time": entropy_time,
+            "delta_entropy": list(delta.astype(float)),
+            "time": entropy_time,
         }
 
         with open(output, "w") as f:
-            json.dump(results, f, indent=4)
+            json.dump(results, f)

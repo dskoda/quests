@@ -50,6 +50,30 @@ def sumexp(X):
 
 
 @nb.njit(fastmath=True)
+def wsumexp(X, w):
+    """weighted sumexp optimized for numba. Does not check any
+        variable and can be unstable, but it's really fast.
+
+    Arguments:
+        X (np.ndarray): an (N, d) matrix with the values. The
+            summation will happen over the axis 1.
+        w (np.ndarray): a (d, ) vector with the weights.
+
+    Returns:
+        wsumexp (np.ndarray): sum(w * exp(X), axis=1)
+    """
+    result = np.empty(X.shape[0], dtype=X.dtype)
+    for i in range(X.shape[0]):
+        _sum = 0.0
+        for j in range(X.shape[1]):
+            _sum += math.exp(X[i, j]) * w[j]
+
+        result[i] = _sum
+
+    return result
+
+
+@nb.njit(fastmath=True)
 def logsumexp(X):
     """logsumexp optimized for numba. Can lead to numerical
         instabilities, but it's really fast.
@@ -109,6 +133,32 @@ def cdist(A, B, norm_A=None, norm_B=None):
             dist[i, j] = math.sqrt(d) if d > 0 else 0
 
     return dist
+
+
+@nb.njit(fastmath=True)
+def cdist_Linf(A, B):
+    """Optimized distance calculation using numba using the
+        Chebyshev distance (L-infinity norm)
+
+    Arguments:
+        A (np.ndarray): an (N, d) matrix with the descriptors
+        B (np.ndarray): an (M, d) matrix with the descriptors
+
+    Returns:
+        dist (np.ndarray): distance matrix
+    """
+    # Computing the dot product
+    M = A.shape[0]
+    N = B.shape[0]
+    dm = np.empty((M, N), dtype=A.dtype)
+
+    # computes the distance using the Chebyshev norm
+    for i in range(A.shape[0]):
+        a = A[i]
+        for j in range(B.shape[0]):
+            dm[i, j] = np.abs(a - B[j]).max()
+
+    return dm
 
 
 @nb.njit(fastmath=True)

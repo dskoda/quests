@@ -69,9 +69,10 @@ def make_descriptors(
     if jobs is not None:
         nb.set_num_threads(jobs)
 
-    logger(f"Loading and creating descriptors for file {file}")
+    logger(f"Loading {file}")
     dset = read(file, index=":")
 
+    logger(f"Creating descriptors...")
     with Timer() as t:
         x = get_descriptors(dset, k=nbrs, cutoff=cutoff)
     descriptor_time = t.time
