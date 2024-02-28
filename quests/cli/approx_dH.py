@@ -17,6 +17,7 @@ from quests.descriptor import get_descriptors
 from quests.entropy import DEFAULT_BANDWIDTH
 from quests.entropy import DEFAULT_BATCH
 from quests.entropy import DEFAULT_UQ_NBRS
+from quests.entropy import DEFAULT_GRAPH_NBRS
 from quests.entropy import approx_delta_entropy
 from quests.tools.time import Timer
 
@@ -44,6 +45,13 @@ from quests.tools.time import Timer
     type=int,
     default=DEFAULT_UQ_NBRS,
     help=f"Number of neighbors when creating the descriptor (default: {DEFAULT_UQ_NBRS})",
+)
+@click.option(
+    "-g",
+    "--graph_nbrs",
+    type=int,
+    default=DEFAULT_GRAPH_NBRS,
+    help=f"Number of neighbors when creating the index (default: {DEFAULT_GRAPH_NBRS})",
 )
 @click.option(
     "-b",
@@ -79,6 +87,7 @@ def approx_dH(
     cutoff,
     nbrs,
     uq_nbrs,
+    graph_nbrs,
     bandwidth,
     jobs,
     output,
@@ -91,12 +100,12 @@ def approx_dH(
     if jobs is not None:
         nb.set_num_threads(jobs)
 
-    x = descriptors_from_file(test, nbrs, cutoff)
-    ref = descriptors_from_file(reference, nbrs, cutoff)
+    x, _ = descriptors_from_file(test, nbrs, cutoff)
+    ref, _ = descriptors_from_file(reference, nbrs, cutoff)
 
     logger("Computing dH...")
     with Timer() as t:
-        delta = approx_delta_entropy(x, ref, h=bandwidth, n=uq_nbrs)
+        delta = approx_delta_entropy(x, ref, h=bandwidth, n=uq_nbrs, graph_neighbors=graph_nbrs)
     entropy_time = t.time
     logger(f"dH computed in: {format_time(entropy_time)}")
 
