@@ -12,6 +12,7 @@ from .matrix import wsumexp
 DEFAULT_BANDWIDTH = 0.015
 DEFAULT_BATCH = 20000
 DEFAULT_UQ_NBRS = 3
+DEFAULT_GRAPH_NBRS = 10
 
 
 def perfect_entropy(
@@ -249,7 +250,7 @@ def get_bandwidth(volume: float, method: str = "gaussian"):
 
 
 def approx_delta_entropy(
-    x: np.ndarray, y: np.ndarray, h: float = DEFAULT_BANDWIDTH, n: int = DEFAULT_UQ_NBRS, **kwargs
+        x: np.ndarray, y: np.ndarray, h: float = DEFAULT_BANDWIDTH, n: int = DEFAULT_UQ_NBRS, graph_neighbors: int = DEFAULT_GRAPH_NBRS, **kwargs
 ):
     """Computes an approximate differential entropy of a dataset `x` using the dataset
         `y` as reference. This function was optimized to be FAST and multithreaded, but
@@ -268,7 +269,7 @@ def approx_delta_entropy(
     """
     import pynndescent as nnd
 
-    index = nnd.NNDescent(y, n_neighbors=5, **kwargs)
+    index = nnd.NNDescent(y, n_neighbors=graph_neighbors, **kwargs)
     index.prepare()
 
     _, d = index.query(x, k=n)
