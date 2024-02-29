@@ -7,6 +7,7 @@ import time
 import click
 import numba as nb
 import numpy as np
+from ase.io import read, write
 
 from quests.descriptor import DEFAULT_CUTOFF, DEFAULT_K, get_descriptors
 from quests.entropy import DEFAULT_BANDWIDTH, DEFAULT_BATCH, delta_entropy
@@ -94,18 +95,32 @@ def dH(
     entropy_time = t.time
     logger(f"dH computed in: {format_time(entropy_time)}")
 
-    if output is not None:
-        results = {
-            "reference_file": reference,
-            "test_file": test,
-            "test_envs": x.shape[0],
-            "ref_envs": ref.shape[0],
-            "k": nbrs,
-            "cutoff": cutoff,
-            "bandwidth": bandwidth,
-            "jobs": jobs,
-            "delta_entropy": list(delta),
-        }
+    if output is None:
+        sys.exit()
 
-        with open(output, "w") as f:
-            json.dump(results, f, indent=4)
+    if output.endswith(".xyz"):
+        dset = read(test, index=":")
+        i = 0
+        for atoms in dset:
+            n = len(atoms)
+            _dh = delta[i:i + n]
+            atoms.set_array("dH", _dH)
+            i += n
+
+        write(output, dset, format="extxyz")
+        sys.exit()
+
+    results = {
+        "reference_file": reference,
+        "test_file": test,
+        "test_envs": x.shape[0],
+        "ref_envs": ref.shape[0],
+        "k": nbrs,
+        "cutoff": cutoff,
+        "bandwidth": bandwidth,
+        "jobs": jobs,
+        "delta_entropy": list(delta),
+    }
+
+    with open(output, "w") as f:
+        json.dump(results, f, indent=4)
