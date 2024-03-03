@@ -22,6 +22,9 @@ from quests.tools.time import Timer
 from .load_file import descriptors_from_file
 from .log import format_time, logger
 
+from .load_file import descriptors_from_file
+from .log import format_time, logger
+
 
 def sample_indices(size: int, n: int):
     if size < n:
