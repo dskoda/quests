@@ -9,17 +9,13 @@ import numba as nb
 import numpy as np
 from ase import Atoms
 
-from .log import format_time
-from .log import logger
-from .load_file import descriptors_from_file
-from quests.descriptor import DEFAULT_CUTOFF
-from quests.descriptor import DEFAULT_K
-from quests.descriptor import get_descriptors
-from quests.entropy import DEFAULT_BANDWIDTH
-from quests.entropy import DEFAULT_BATCH
-from quests.entropy import get_bandwidth
-from quests.entropy import perfect_entropy
+from quests.descriptor import DEFAULT_CUTOFF, DEFAULT_K, get_descriptors
+from quests.entropy import (DEFAULT_BANDWIDTH, DEFAULT_BATCH, get_bandwidth,
+                            perfect_entropy)
 from quests.tools.time import Timer
+
+from .load_file import descriptors_from_file
+from .log import format_time, logger
 
 
 def sample_indices(size: int, n: int):

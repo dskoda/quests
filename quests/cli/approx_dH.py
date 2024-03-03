@@ -1,25 +1,21 @@
-import os
 import gc
-import sys
 import json
+import os
+import sys
 import time
 
 import click
 import numba as nb
 import numpy as np
 
-from .log import format_time
-from .log import logger
-from .load_file import descriptors_from_file
-from quests.descriptor import DEFAULT_CUTOFF
-from quests.descriptor import DEFAULT_K
-from quests.descriptor import get_descriptors
-from quests.entropy import DEFAULT_BANDWIDTH
-from quests.entropy import DEFAULT_BATCH
-from quests.entropy import DEFAULT_UQ_NBRS
-from quests.entropy import DEFAULT_GRAPH_NBRS
-from quests.entropy import approx_delta_entropy
+from quests.descriptor import DEFAULT_CUTOFF, DEFAULT_K, get_descriptors
+from quests.entropy import (DEFAULT_BANDWIDTH, DEFAULT_BATCH,
+                            DEFAULT_GRAPH_NBRS, DEFAULT_UQ_NBRS,
+                            approx_delta_entropy)
 from quests.tools.time import Timer
+
+from .load_file import descriptors_from_file
+from .log import format_time, logger
 
 
 @click.command("approx_dH")

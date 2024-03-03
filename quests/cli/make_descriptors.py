@@ -6,15 +6,11 @@ import numba as nb
 import numpy as np
 from ase.io import read
 
-from .log import format_time
-from .log import logger
-from quests.descriptor import DEFAULT_CUTOFF
-from quests.descriptor import DEFAULT_K
-from quests.descriptor import get_descriptors
-from quests.entropy import DEFAULT_BANDWIDTH
-from quests.entropy import DEFAULT_BATCH
-from quests.entropy import perfect_entropy
+from quests.descriptor import DEFAULT_CUTOFF, DEFAULT_K, get_descriptors
+from quests.entropy import DEFAULT_BANDWIDTH, DEFAULT_BATCH, perfect_entropy
 from quests.tools.time import Timer
+
+from .log import format_time, logger
 
 
 @click.command("make_descriptors")

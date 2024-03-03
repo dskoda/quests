@@ -1,6 +1,5 @@
-from time import time
-from time import perf_counter
 from functools import wraps
+from time import perf_counter, time
 
 
 def print_log(name, time):

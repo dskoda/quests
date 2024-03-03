@@ -1,12 +1,12 @@
 import click
 
-from quests.cli.make_descriptors import make_descriptors
-from quests.cli.entropy import entropy
-from quests.cli.entropy_sampler import entropy_sampler
-from quests.cli.mutual_info import mutual_info
-from quests.cli.compute_dH import dH
 from quests.cli.approx_dH import approx_dH
 from quests.cli.bandwidth import bandwidth
+from quests.cli.compute_dH import dH
+from quests.cli.entropy import entropy
+from quests.cli.entropy_sampler import entropy_sampler
+from quests.cli.make_descriptors import make_descriptors
+from quests.cli.mutual_info import mutual_info
 
 
 class QuestsGroup(click.Group):

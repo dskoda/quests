@@ -1,7 +1,8 @@
 import numpy as np
 from ase.io import read
-from quests.tools.time import Timer
+
 from quests.descriptor import get_descriptors
+from quests.tools.time import Timer
 
 
 def descriptors_from_file(file, k, cutoff):

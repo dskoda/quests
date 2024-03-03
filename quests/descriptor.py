@@ -4,15 +4,10 @@ import numba as nb
 import numpy as np
 from ase import Atoms
 from numba import types
-from numba.typed import Dict
-from numba.typed import List
+from numba.typed import Dict, List
 
-from .matrix import argsort
-from .matrix import cdist
-from .matrix import inverse_3d
-from .matrix import pdist
-from .matrix import stack_xyz
 from .geometry import cutoff_fn
+from .matrix import argsort, cdist, inverse_3d, pdist, stack_xyz
 
 IntList = types.ListType(types.int64)
 FloatArrayList = types.Array(types.float64, 1, "C")

@@ -1,7 +1,8 @@
 import click
 
-from .log import logger
 from quests.entropy import get_bandwidth
+
+from .log import logger
 
 
 @click.command("bandwidth")
