@@ -1,6 +1,6 @@
 import numpy as np
 from ase import Atoms
-from matscipy.neighbours import neighbour_list as nbrlist
+from ase.neighborlist import neighbor_list
 
 
 def extract_environment(atoms: Atoms, idx: int, cutoff: float, k: int) -> Atoms:
@@ -21,7 +21,7 @@ def extract_environment(atoms: Atoms, idx: int, cutoff: float, k: int) -> Atoms:
     --------
         env (Atoms): isolated environment of `atoms[idx]`
     """
-    i, j, d, D = nbrlist("ijdD", atoms, cutoff=cutoff)
+    i, j, d, D = neighbor_list("ijdD", atoms, cutoff=cutoff)
 
     env = i == idx
     k_env = np.argsort(d[env])[:k]

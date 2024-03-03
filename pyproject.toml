@@ -15,11 +15,10 @@ dependencies = [
     "numpy",
     "pandas",
     "numba",
-    "matscipy",
     "ase",
     "click",
-    "multiprocess",
-    "pykdtree",
+    "pynndescent",
+    "scikit-learn",
 ]
 
 [project.scripts]
