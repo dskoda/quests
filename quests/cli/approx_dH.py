@@ -105,7 +105,9 @@ def approx_dH(
 
     logger("Computing dH...")
     with Timer() as t:
-        delta = approx_delta_entropy(x, ref, h=bandwidth, n=uq_nbrs, graph_neighbors=graph_nbrs)
+        delta = approx_delta_entropy(
+            x, ref, h=bandwidth, n=uq_nbrs, graph_neighbors=graph_nbrs
+        )
     entropy_time = t.time
     logger(f"dH computed in: {format_time(entropy_time)}")
 

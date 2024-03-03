@@ -4,11 +4,7 @@ import numba as nb
 import numpy as np
 
 from .geometry import cutoff_fn
-from .matrix import cdist
-from .matrix import norm
-from .matrix import sum_positive
-from .matrix import sumexp
-from .matrix import wsumexp
+from .matrix import cdist, norm, sum_positive, sumexp, wsumexp
 
 DEFAULT_BANDWIDTH = 0.015
 DEFAULT_BATCH = 20000
@@ -74,8 +70,8 @@ def diversity(
     h: float = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,
 ):
-    """Computes the diversity of a dataset `x` by assuming a sum over the 
-        inverse p(x). This approximates the number of unique data points 
+    """Computes the diversity of a dataset `x` by assuming a sum over the
+        inverse p(x). This approximates the number of unique data points
         in the system, as Kij >= 1 for a kernel matrix of a dataset.
 
     Arguments:
@@ -251,7 +247,12 @@ def get_bandwidth(volume: float, method: str = "gaussian"):
 
 
 def approx_delta_entropy(
-        x: np.ndarray, y: np.ndarray, h: float = DEFAULT_BANDWIDTH, n: int = DEFAULT_UQ_NBRS, graph_neighbors: int = DEFAULT_GRAPH_NBRS, **kwargs
+    x: np.ndarray,
+    y: np.ndarray,
+    h: float = DEFAULT_BANDWIDTH,
+    n: int = DEFAULT_UQ_NBRS,
+    graph_neighbors: int = DEFAULT_GRAPH_NBRS,
+    **kwargs,
 ):
     """Computes an approximate differential entropy of a dataset `x` using the dataset
         `y` as reference. This function was optimized to be FAST and multithreaded, but

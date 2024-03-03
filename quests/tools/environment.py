@@ -58,6 +58,6 @@ def estimate_neighbors(density: float, cutoff: float, molar_mass: float):
     # 1 mol = 6.02E23 atoms
     # 1 cm^3 = 1E24 Å^3
     num_atoms = density / molar_mass * 0.6022  # atoms/Å^3
-    volume = 4 * np.pi * (cutoff ** 3) / 3
+    volume = 4 * np.pi * (cutoff**3) / 3
 
     return num_atoms * volume

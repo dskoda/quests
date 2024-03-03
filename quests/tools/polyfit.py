@@ -9,9 +9,7 @@ class PolynomialRegressor2D:
     data points.
     """
 
-    def __init__(
-        self, degree: int, x_train: np.ndarray, y_train: np.ndarray, **kwargs
-    ):
+    def __init__(self, degree: int, x_train: np.ndarray, y_train: np.ndarray, **kwargs):
         """Initializes the 2D polynomial regressor using some training data.
 
         Arguments:

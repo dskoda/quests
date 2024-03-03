@@ -40,4 +40,4 @@ class Timer:
         self.time = perf_counter() - self.start
 
     def __str__(self):
-        return f'Time: {self.time:.3f} seconds'
+        return f"Time: {self.time:.3f} seconds"

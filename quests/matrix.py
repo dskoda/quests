@@ -26,6 +26,7 @@ def sum_positive(X):
 
     return result
 
+
 @nb.njit(fastmath=True)
 def sumexp(X):
     """sumexp optimized for numba. Can lead to numerical
