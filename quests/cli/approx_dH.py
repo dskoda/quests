@@ -9,9 +9,13 @@ import numba as nb
 import numpy as np
 
 from quests.descriptor import DEFAULT_CUTOFF, DEFAULT_K, get_descriptors
-from quests.entropy import (DEFAULT_BANDWIDTH, DEFAULT_BATCH,
-                            DEFAULT_GRAPH_NBRS, DEFAULT_UQ_NBRS,
-                            approx_delta_entropy)
+from quests.entropy import (
+    DEFAULT_BANDWIDTH,
+    DEFAULT_BATCH,
+    DEFAULT_GRAPH_NBRS,
+    DEFAULT_UQ_NBRS,
+    approx_delta_entropy,
+)
 from quests.tools.time import Timer
 
 from .load_file import descriptors_from_file

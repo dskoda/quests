@@ -10,8 +10,12 @@ import numpy as np
 from ase import Atoms
 
 from quests.descriptor import DEFAULT_CUTOFF, DEFAULT_K, get_descriptors
-from quests.entropy import (DEFAULT_BANDWIDTH, DEFAULT_BATCH, get_bandwidth,
-                            perfect_entropy)
+from quests.entropy import (
+    DEFAULT_BANDWIDTH,
+    DEFAULT_BATCH,
+    get_bandwidth,
+    perfect_entropy,
+)
 from quests.tools.time import Timer
 
 from .load_file import descriptors_from_file
