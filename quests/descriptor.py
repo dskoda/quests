@@ -351,12 +351,13 @@ def get_descriptors(
         x1.append(_x1)
         x2.append(_x2)
 
-    if concat:
-        x1 = np.concatenate(x1)
-        x2 = np.concatenate(x2)
-        return np.concatenate([x1, x2], axis=1)
+    x1 = np.concatenate(x1)
+    x2 = np.concatenate(x2)
 
     x1 = x1.astype(dtype)
     x2 = x2.astype(dtype)
+
+    if concat:
+        return np.concatenate([x1, x2], axis=1)
 
     return x1, x2
