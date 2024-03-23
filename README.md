@@ -29,7 +29,7 @@ pip install .
 Once installed, you can use the `quests` command to perform different analyses. For example, to compute the entropy of any dataset (the input can be anything that ASE reads, including xyz files), you can use the `quests entropy` command:
 
 ```
-quests entropy dump.lammpstrj
+quests entropy dump.lammpstrj --bandwidth 0.015
 ```
 
 For subsampling the dataset and avoiding using the entire dataset, use the `entropy_sampler` example:
@@ -128,4 +128,6 @@ SPDX: BSD-3-Clause
 
 LLNL-CODE-858914
 
-This work was supported by LLNL's LDRD program under tracking codes 22-ERD-055 and 23-SI-006.
+## Acknowledgements
+
+This work was produced under the auspices of the U.S. Department of Energy by Lawrence Livermore National Laboratory under Contract DE-AC52-07NA27344, with support from LLNL's LDRD program under tracking codes 22-ERD-055 and 23-SI-006.
