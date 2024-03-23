@@ -45,6 +45,27 @@ For additional help with these commands, please use `quests --help`, `quests ent
 To integrate the QUESTS code with other codes, the easiest way is to use the functions to [get descriptors](https://lc.llnl.gov/gitlab/dskoda/quests/-/blob/main/quests/descriptor.py?ref_type=heads#L346) and [compute entropies](https://lc.llnl.gov/gitlab/dskoda/quests/-/blob/main/quests/entropy.py?ref_type=heads#L16).
 More extensive documentation is to come.
 
-## Contact
+### Citing 
 
-If you have questions, please contact Daniel (schwalbekoda1) for help with the package.
+If you use QUESTS in a publication, please cite the following paper:
+
+```bibtex
+@article{schwalbekoda2024information,
+    title = {Information theory unifies atomistic machine learning, uncertainty quantification, and materials thermodynamics},
+    author = {Schwalbe-Koda, Daniel and Hamel, Sebastien and Sadigh, Babak and Bulatov, Vasily and Zhou, Fei and Lordi, Vincenzo},
+    year = {2024},
+    journal = {arXiv:},
+    doi = {},
+    url = {},
+    arxiv={},
+}
+```
+## License
+
+The mkite suite is distributed under the following license: BSD-3
+
+All new contributions must be made under this license.
+
+SPDX: BSD-3-Clause
+
+LLNL-CODE-858914
