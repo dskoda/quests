@@ -28,13 +28,13 @@ pip install .
 
 Once installed, you can use the `quests` command to perform different analyses. For example, to compute the entropy of any dataset (the input can be anything that ASE reads, including xyz files), you can use the `quests entropy` command:
 
-```
+```bash
 quests entropy dump.lammpstrj --bandwidth 0.015
 ```
 
 For subsampling the dataset and avoiding using the entire dataset, use the `entropy_sampler` example:
 
-```
+```bash
 quests entropy_sampler dataset.xyz --batch_size 20000 -s 100000 -n 3
 ```
 
@@ -48,7 +48,7 @@ For additional help with these commands, please use `quests --help`, `quests ent
 
 To use the QUESTS package to create descriptors and compute entropies, you can use the [descriptor](quests/descriptor.py) and [entropy](quests/entropy.py) submodules:
 
-```
+```python
 from ase.io import read
 from quests.descriptor import get_descriptors
 from quests.entropy import perfect_entropy, diversity
@@ -66,7 +66,7 @@ The entropy and diversity are being computed using a Gaussian kernel (default) w
 
 #### Computing differential entropies
 
-```
+```python
 from ase.io import read
 from quests.descriptor import get_descriptors
 from quests.entropy import delta_entropy
@@ -84,7 +84,7 @@ dH = delta_entropy(y, x, h=0.015)
 
 #### Computing approximate differential entropies
 
-```
+```python
 from ase.io import read
 from quests.descriptor import get_descriptors
 from quests.entropy import approx_delta_entropy
