@@ -8,6 +8,7 @@ import click
 import numba as nb
 import numpy as np
 from ase import Atoms
+from ase.io import read
 
 from quests.descriptor import DEFAULT_CUTOFF, DEFAULT_K, get_descriptors
 from quests.entropy import (
@@ -132,6 +133,7 @@ def entropy_sampler(
     x, descriptor_time = descriptors_from_file(file, k=nbrs, cutoff=cutoff)
 
     if estimate_bw:
+        dset = read(file, index=":")
         volume = np.mean([at.get_volume() / len(at) for at in dset])
         bandwidth = get_bandwidth(volume)
 
