@@ -339,6 +339,21 @@ def get_descriptors(
     concat: bool = True,
     dtype: str = "float32",
 ):
+    """Computes the default representation for the QUESTS approach given a dataset
+        `dset`. The computation of atom-centered descriptors is parallelized over
+        the maximum number of threads set by numba.
+
+    Arguments:
+        dset (List[Atoms]): dataset for which the descriptors will be computed.
+        k (int): number of nearest neighbors to use when computing descriptors.
+        cutoff (float): cutoff radius for the weight function.
+        concat (bool): if True, concatenates X1 and X2 column-wise and returns a
+            single matrix X.
+        dtype (str): dtype for the matrix.
+
+    Returns:
+        X (np.ndarray): matrix containing descriptors for all atoms in `dset`.
+    """
     x1, x2 = [], []
     for atoms in dset:
         if not np.all(atoms.pbc):
