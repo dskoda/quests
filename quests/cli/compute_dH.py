@@ -103,7 +103,7 @@ def dH(
         i = 0
         for atoms in dset:
             n = len(atoms)
-            _dh = delta[i:i + n]
+            _dH = delta[i:i + n]
             atoms.set_array("dH", _dH)
             i += n
 
