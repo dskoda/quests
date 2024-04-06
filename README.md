@@ -110,7 +110,7 @@ If you use QUESTS in a publication, please cite the following paper:
 ```bibtex
 @article{schwalbekoda2024information,
     title = {Information theory unifies atomistic machine learning, uncertainty quantification, and materials thermodynamics},
-    author = {Schwalbe-Koda, Daniel and Hamel, Sebastien and Sadigh, Babak and Bulatov, Vasily and Zhou, Fei and Lordi, Vincenzo},
+    author = {Schwalbe-Koda, Daniel and Hamel, Sebastien and Sadigh, Babak and Zhou, Fei and Lordi, Vincenzo},
     year = {2024},
     journal = {arXiv:},
     doi = {},
@@ -120,7 +120,7 @@ If you use QUESTS in a publication, please cite the following paper:
 ```
 ## License
 
-The mkite suite is distributed under the following license: BSD-3
+The QUESTS software is distributed under the following license: BSD-3
 
 All new contributions must be made under this license.
 

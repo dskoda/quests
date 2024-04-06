@@ -27,3 +27,6 @@ quests_flex = "quests.cli.quests_flex:quests_flex"
 
 [tool.setuptools]
 packages = ["quests"]
+
+[project.optional-dependencies]
+docs = ["sphinx"]
