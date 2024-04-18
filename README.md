@@ -1,16 +1,22 @@
 # QUESTS: Quick Uncertainty and Entropy from STructural Similarity
 
 QUESTS provides model-free uncertainty and entropy estimation methods for interatomic potentials.
-Among the methods, we propose a structural descriptor based on k-nearest neighbors that is:
+Among the methods, we propose a structural descriptor based on k-nearest neighbors that:
 
-1. Fast to compute, as it uses only distances between atoms within an environment.
+1. Is fast to compute, as it uses only distances between atoms within an environment.
 Because the descriptors are parallelized, generation of descriptors for 1.5M environments takes about 3 seconds on a 56-core computer.
-2. Interpretable, as the distances correspond to directly to displacements of atoms.
-3. Lead to an interpretable information entropy value.
+2. Can be used to generate distributions and, in combination with information theory, gives rise to entropy values.
+3. Is shown to recover thermodynamic quantities, order parameters, and many useful properties of information theory.
 
 This package also contains metrics to quantify the diversity of a dataset using this descriptor, and tools to interface with other representations and packages.
 
 ## Installation
+
+### From pip
+
+```bash
+pip install quests
+```
 
 ### From repository
 
