@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "quests"
-version = "0.1.0"
+version = "2024.04.18"
 description = "Quick Uncertainty and Entropy from STructural Similarity"
-authors = [{name = "Daniel Schwalbe-Koda", email = "dskoda@llnl.gov"}]
+authors = [{name = "Daniel Schwalbe-Koda", email = "dskoda@ucla.edu"}]
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.8"
