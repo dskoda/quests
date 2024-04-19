@@ -4,7 +4,7 @@ QUESTS provides model-free uncertainty and entropy estimation methods for intera
 Among the methods, we propose a structural descriptor based on k-nearest neighbors that:
 
 1. Is fast to compute, as it uses only distances between atoms within an environment.
-Because the descriptors are parallelized, generation of descriptors for 1.5M environments takes about 3 seconds on a 56-core computer.
+Because the computation of descriptors is efficiently parallelized, generation of descriptors for 1.5M environments takes about 3 seconds on 56 threads (tested against Intel Xeon CLX-8276L CPUs).
 2. Can be used to generate distributions and, in combination with information theory, gives rise to entropy values.
 3. Is shown to recover thermodynamic quantities, order parameters, and many useful properties of information theory.
 
