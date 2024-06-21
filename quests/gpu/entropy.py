@@ -119,7 +119,7 @@ def kernel_sum(
     norm_y = norm(y)
 
     # variables that are going to store the results
-    p_x = torch.zeros(M, dtype=x.dtype)
+    p_x = torch.zeros(M, dtype=x.dtype, device=x.device)
 
     # loops over rows and columns
     for step_x in range(0, max_step_x):
