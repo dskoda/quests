@@ -30,3 +30,4 @@ packages = ["quests"]
 
 [project.optional-dependencies]
 docs = ["sphinx"]
+gpu = ["torch", "torchvision"]
