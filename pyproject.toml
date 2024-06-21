@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "quests"
-version = "2024.04.19"
+version = "2024.06.21"
 description = "Quick Uncertainty and Entropy from STructural Similarity"
 authors = [{name = "Daniel Schwalbe-Koda", email = "dskoda@ucla.edu"}]
 readme = "README.md"
