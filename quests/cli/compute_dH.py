@@ -103,7 +103,7 @@ def dH(
         i = 0
         for atoms in dset:
             n = len(atoms)
-            _dH = delta[i:i + n]
+            _dH = delta[i : i + n]
             atoms.set_array("dH", _dH)
             i += n
 
@@ -119,7 +119,7 @@ def dH(
         "cutoff": cutoff,
         "bandwidth": bandwidth,
         "jobs": jobs,
-        "delta_entropy": list(delta),
+        "delta_entropy": list(delta.astype(float)),
     }
 
     with open(output, "w") as f:
