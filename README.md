@@ -109,6 +109,34 @@ y = get_descriptors(dset_y, k=k, cutoff=cutoff)
 dH = approx_delta_entropy(y, x, h=0.015, n=5, graph_neighbors=10)
 ```
 
+#### Computing the dataset entropy using PyTorch
+
+To accelerate the computation of entropy of datasets, one can use PyTorch to compute the entropy of a system.
+This can be done by first installing the optional dependencies for this repository:
+
+```bash
+pip install quests[gpu]
+```
+
+The syntax of the entropy, as computed with PyTorch, is identical to the one above.
+Instead of loading the functions from [quests.entropy](quests/entropy.py), however, you should load them from [quests.gpu.entropy](quests/gpu/entropy.py).
+The descriptors remain the same - as of now, creating descriptors using GPUs is not supported.
+Note that this constraint requires the descriptors to be generated using the traditional routes, and later converted into a `torch.tensor`.
+
+```python
+import torch
+from ase.io import read
+from quests.descriptor import get_descriptors
+from quests.gpu.entropy import perfect_entropy
+
+dset = read("dataset.xyz", index=":")
+x = get_descriptors(dset, k=32, cutoff=5.0)
+x = torch.tensor(x, device="cuda")
+h = 0.015
+batch_size = 10000
+H = perfect_entropy(x, h=h, batch_size=batch_size)
+```
+
 ### Citing
 
 If you use QUESTS in a publication, please cite the following paper:
