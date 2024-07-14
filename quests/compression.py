@@ -3,8 +3,9 @@ from ase import Atoms
 from numba import types
 from numba.typed import Dict, List
 import numpy as np 
-from quests.entropy import delta_entropy, perfect_entropy
+from quests.entropy import delta_entropy, perfect_entropy, diversity
 from quests.descriptor import get_descriptors
+from bayes_opt import BayesianOptimization
 
 DEFAULT_CUTOFF: float = 5.0
 DEFAULT_K: int = 32
@@ -56,7 +57,21 @@ def find_key(input_dict: dict, target: np.ndarray):
             return key
     return None
         
-def minimum_set_coverage(frames, initial_entropies, descriptor_dict, compression_value, h):
+def minimum_set_coverage(frames: list, initial_entropies: np.ndarray, descriptor_dict: dict, h: float, l: float):
+    
+    """Given the frames and initial entropies, determine the most diverse set of atoms in the set
+    
+    Arguments: 
+        frames (list): descriptors of each of the frames
+        initial_entropies (np.ndarray): array with initial entropies of each of the frames
+        descriptor_dict (dict): dictionary containing descriptors
+        h (float): h value
+        l (float): lambda value 
+        
+    Returns: indexes (list): list of indexes of the most diverse frames in order 
+        
+        
+    """
     
     indexes = []
     
@@ -69,7 +84,7 @@ def minimum_set_coverage(frames, initial_entropies, descriptor_dict, compression
     for i in range(len(frames)):
         entropy = np.zeros(len(frames))
         for a in range(len(frames)):
-            entropy[a] = np.mean(delta_entropy(frames[a], compressed_data, h = h))
+            entropy[a] = np.mean(delta_entropy(frames[a], compressed_data, h = h)) + l*initial_entropies[find_key(descriptor_dict, frames[a])]
         compressed_data = np.concatenate((compressed_data, frames[entropy.argmax()]), axis = 0)
         indexes.append(find_key(descriptor_dict, frames[entropy.argmax()]))
         frames.pop(entropy.argmax())
@@ -78,7 +93,19 @@ def minimum_set_coverage(frames, initial_entropies, descriptor_dict, compression
     
     
     
-def farthest_point_sampling(frames, initial_entropies, descriptor_dict, compression_value):
+def farthest_point_sampling(frames, initial_entropies, descriptor_dict):
+    
+    """Given the frames and initial entropies, determine the most diverse set of atoms in the set
+    
+    Arguments: 
+        frames (list): descriptors of each of the frames
+        initial_entropies (np.ndarray): array with initial entropies of each of the frames
+        descriptor_dict (dict): dictionary containing descriptors
+        
+    Returns: indexes (list): list of indexes of the most diverse frames in order 
+        
+        
+    """
     
     indexes = []
     
@@ -90,7 +117,7 @@ def farthest_point_sampling(frames, initial_entropies, descriptor_dict, compress
     
     # loop to find order of values 
     
-    for i in range(int(len(frames)*compression_value)):
+    for i in range(int(len(frames))):
         
         # generate minimum distance matrix 
         
@@ -113,12 +140,22 @@ def farthest_point_sampling(frames, initial_entropies, descriptor_dict, compress
     
     return indexes
         
-    
-    
 def compress(dset: List[Atoms], k: int = DEFAULT_K, cutoff: int = DEFAULT_CUTOFF, h: int = DEFAULT_H, batch_size: int = DEFAULT_BS,
-             compression_value: float = None, c_type: str = 'msc'):
+             compression_value: float = None, c_type: str = 'msc', l: float = None):
     
+    """Gets descriptors for each frame
     
+    Arguments: 
+        dset (List[Atoms]): dataset for which entropies will be computed
+        k (int): number of nearest neighbors to use when computing descriptors.
+        h (int): 
+        batch_size (int): 
+        cutoff (float): cutoff radius for the weight function.
+        
+    Returns: 
+        frames_orig (list): list of the descriptors of each frame (np.ndarray)
+        
+    """
     
     assert compression_value > 0 and compression_value <= 1, "Compression value must be between 0 (non-inclusive) and 1"
     assert c_type in ['msc', 'msc2', 'fps']
@@ -131,8 +168,71 @@ def compress(dset: List[Atoms], k: int = DEFAULT_K, cutoff: int = DEFAULT_CUTOFF
     for i in range(len(frames)):
         descriptor_dict[i] = frames[i]
         
+        
     if c_type == 'fps':
-        return dset[farthest_point_sampling(frames, initial_entropies, descriptor_dict, compression_value)]
+        
+        # retrieve indexes 
+        
+        indexes = farthest_point_sampling(frames, initial_entropies, descriptor_dict)
+        if compression_value != None:
+            return dset[indexes[:int(len(dset)*compression_value)]]
+        else:
+            
+            # finding optimal compression value 
+            
+            def optimization_function(x):
+                final_data = [frames[i] for i in indexes[:int(len(dset)*x)]]
+                final_data = np.concatenate(final_data, axis = 0)
+                entropy_msc = perfect_entropy(final_data, h = h, batch_size = batch_size)
+                diversity_msc = diversity(final_data, h=h, batch_size = batch_size)
+                return entropy_msc*np.log(diversity_msc)
+            
+            bounds = {'x': (0.1, 1)}
+            optimizer = BayesianOptimization(f=optimization_function, pbounds=bounds, random_state=1)
+            optimizer.maximize(init_points=5, n_iter=20)
+            
+            return dset[indexes[:int(len(dset)*optimizer.max['params']['x'])]]
     elif c_type == 'msc':
-        return dset[minimum_set_coverage(frames, initial_entropies, descriptor_dict, compression_value, h)]
+        
+        # retrieve indexes
+        
+        indexes = minimum_set_coverage(frames, initial_entropies, descriptor_dict, h, l = 0)
+        
+        if compression_value != None:
+            return dset[indexes[:int(len(dset)*compression_value)]]
+        else:
+            # finding optimal compression value 
+            
+            def optimization_function(x):
+                final_data = [frames[i] for i in indexes[:int(len(dset)*x)]]
+                final_data = np.concatenate(final_data, axis = 0)
+                entropy_msc = perfect_entropy(final_data, h = h, batch_size = batch_size)
+                diversity_msc = diversity(final_data, h=h, batch_size = batch_size)
+                return entropy_msc*np.log(diversity_msc)
+            
+            bounds = {'x': (0.1, 1)}
+            optimizer = BayesianOptimization(f=optimization_function, pbounds=bounds, random_state=1)
+            optimizer.maximize(init_points=5, n_iter=20)
+            
+            return dset[indexes[:int(len(dset)*optimizer.max['params']['x'])]]
+    else:
+        if compression_value != None and l != None:
+            return dset[minimum_set_coverage(frames, initial_entropies, descriptor_dict, h, l)[:int(len(dset)*compression_value)]]
+        else:
+            # finding optimal compression value
+            
+            def optimization_function(x, l):
+                indexes = minimum_set_coverage(frames, initial_entropies, descriptor_dict, h, l)
+                final_data = [frames[i] for i in indexes[:int(len(dset)*x)]]
+                final_data = np.concatenate(final_data, axis = 0)
+                entropy_msc = perfect_entropy(final_data, h = h, batch_size = batch_size)
+                diversity_msc = diversity(final_data, h=h, batch_size = batch_size)
+                return entropy_msc*np.log(diversity_msc)
+            
+            bounds = {'x': (0.1, 1), 'l': (0, 10)}
+            optimizer = BayesianOptimization(f=optimization_function, pbounds=bounds, random_state=1)
+            optimizer.maximize(init_points=5, n_iter=20)
+            
+            return dset[minimum_set_coverage(frames, initial_entropies, descriptor_dict, h, optimizer.max['params']['l'])
+                        [:int(len(dset)*optimizer.max['params']['x'])]]
     
