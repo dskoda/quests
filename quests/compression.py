@@ -10,7 +10,7 @@ from bayes_opt import BayesianOptimization
 DEFAULT_CUTOFF: float = 5.0
 DEFAULT_K: int = 32
 EPS: float = 1e-15
-DEFAULT_H: int = 0.015
+DEFAULT_H: float = 0.015
 DEFAULT_BS: int = 10000
 
 def get_frame_descriptors(dset: List[Atoms], k: int = DEFAULT_K, cutoff: int = DEFAULT_CUTOFF, h: int = DEFAULT_H, batch_size: int = DEFAULT_BS):
@@ -140,7 +140,7 @@ def farthest_point_sampling(frames, initial_entropies, descriptor_dict):
     
     return indexes
         
-def compress(dset: List[Atoms], k: int = DEFAULT_K, cutoff: int = DEFAULT_CUTOFF, h: int = DEFAULT_H, batch_size: int = DEFAULT_BS,
+def compress(dset: List[Atoms], k: int = DEFAULT_K, cutoff: float = DEFAULT_CUTOFF, h: float = DEFAULT_H, batch_size: int = DEFAULT_BS,
              compression_value: float = None, c_type: str = 'msc', l: float = None):
     
     """Gets descriptors for each frame
@@ -148,8 +148,9 @@ def compress(dset: List[Atoms], k: int = DEFAULT_K, cutoff: int = DEFAULT_CUTOFF
     Arguments: 
         dset (List[Atoms]): dataset for which entropies will be computed
         k (int): number of nearest neighbors to use when computing descriptors.
-        h (int): 
-        batch_size (int): 
+        cutoff (float)
+        h (float): h value 
+        batch_size (int):  
         cutoff (float): cutoff radius for the weight function.
         
     Returns: 
@@ -157,7 +158,6 @@ def compress(dset: List[Atoms], k: int = DEFAULT_K, cutoff: int = DEFAULT_CUTOFF
         
     """
     
-    assert compression_value > 0 and compression_value <= 1, "Compression value must be between 0 (non-inclusive) and 1"
     assert c_type in ['msc', 'msc2', 'fps']
     
     # descriptors and initial entropies for each frame in the dataset
