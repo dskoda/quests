@@ -1,6 +1,7 @@
 import gc
 import json
 import os
+import sys
 import time
 
 import click
@@ -103,7 +104,7 @@ def entropy(
             "cutoff": cutoff,
             "bandwidth": bandwidth,
             "jobs": jobs,
-            "entropy": entropy,
+            "entropy": float(entropy),
             "descriptor_time": descriptor_time,
             "entropy_time": entropy_time,
         }

@@ -157,7 +157,7 @@ def entropy_sampler(
             entropy = perfect_entropy(xsample, h=bandwidth, batch_size=batch_size)
         entropy_time = t.time
 
-        entropies.append(entropy)
+        entropies.append(float(entropy))
         entropies_times.append(entropy_time)
 
     logger(f"Entropy: {np.mean(entropies): .3f} ± {np.std(entropies): .3f} (nats)")
