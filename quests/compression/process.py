@@ -1,17 +1,21 @@
 from ase.io import read
 from ase import Atoms
+from numba.typed import List
 from numba import types
-from numba.typed import Dict, List
-import numpy as np 
-from quests.entropy import delta_entropy, perfect_entropy, diversity
-from quests.descriptor import get_descriptors
 from bayes_opt import BayesianOptimization
+from quests.entropy import perfect_entropy, diversity
+from quests.descriptor import get_descriptors
+import numpy as np
+
+from .minimum_set_coverage import minimum_set_coverage
+from .farthest_point_sampling import farthest_point_sampling
 
 DEFAULT_CUTOFF: float = 5.0
 DEFAULT_K: int = 32
 EPS: float = 1e-15
 DEFAULT_H: float = 0.015
 DEFAULT_BS: int = 10000
+
 
 def get_frame_descriptors(dset: List[Atoms], k: int = DEFAULT_K, cutoff: int = DEFAULT_CUTOFF, h: int = DEFAULT_H, batch_size: int = DEFAULT_BS):
     
@@ -37,110 +41,7 @@ def get_frame_descriptors(dset: List[Atoms], k: int = DEFAULT_K, cutoff: int = D
         initial_entropies.append(perfect_entropy(y, h=h, batch_size = batch_size))
     return frames_orig, np.array(initial_entropies)
 
-def find_key(input_dict: dict, target: np.ndarray):
-    
-    """Given a dictionary of descriptors, determines the index of the target descriptors
-    
-    Arguments: 
-        input_dict (dictionary): dictionary containing descriptors
-        target (np.ndarray): numpy array of descriptor
-        
-    Returns: key (int): original index 
-        
-        
-    """
-    
-    for key in input_dict:
-        if (target.shape != input_dict[key].shape):
-            continue
-        if (target == input_dict[key]).all():
-            return key
-    return None
-        
-def minimum_set_coverage(frames: list, initial_entropies: np.ndarray, descriptor_dict: dict, h: float, l: float):
-    
-    """Given the frames and initial entropies, determine the most diverse set of atoms in the set
-    
-    Arguments: 
-        frames (list): descriptors of each of the frames
-        initial_entropies (np.ndarray): array with initial entropies of each of the frames
-        descriptor_dict (dict): dictionary containing descriptors
-        h (float): h value
-        l (float): lambda value 
-        
-    Returns: indexes (list): list of indexes of the most diverse frames in order 
-        
-        
-    """
-    
-    indexes = []
-    
-    compressed_data = frames[initial_entropies.argmax()]
-    indexes.append(initial_entropies.argmax())
-    frames.pop(initial_entropies.argmax())
-    
-    # loop to find order of values 
-    
-    for i in range(len(frames)):
-        entropy = np.zeros(len(frames))
-        for a in range(len(frames)):
-            entropy[a] = np.mean(delta_entropy(frames[a], compressed_data, h = h)) + l*initial_entropies[find_key(descriptor_dict, frames[a])]
-        compressed_data = np.concatenate((compressed_data, frames[entropy.argmax()]), axis = 0)
-        indexes.append(find_key(descriptor_dict, frames[entropy.argmax()]))
-        frames.pop(entropy.argmax())
-    
-    return indexes
-    
-    
-    
-def farthest_point_sampling(frames, initial_entropies, descriptor_dict):
-    
-    """Given the frames and initial entropies, determine the most diverse set of atoms in the set
-    
-    Arguments: 
-        frames (list): descriptors of each of the frames
-        initial_entropies (np.ndarray): array with initial entropies of each of the frames
-        descriptor_dict (dict): dictionary containing descriptors
-        
-    Returns: indexes (list): list of indexes of the most diverse frames in order 
-        
-        
-    """
-    
-    indexes = []
-    
-    # generate first value 
-    
-    data = frames[initial_entropies.argmax()]
-    indexes.append(initial_entropies.argmax())
-    frames.pop(initial_entropies.argmax())
-    
-    # loop to find order of values 
-    
-    for i in range(int(len(frames))):
-        
-        # generate minimum distance matrix 
-        
-        min_distance = np.zeros(len(frames))
-        
-        # calculates distance between closest values in sets 
-        
-        for c in range(len(frames)):
-            distance_matrix = np.zeros((len(frames), len(data)))
-            for a in range(len(frames)):
-                for b in range(len(data)):
-                    distance_matrix[a, b] = np.linalg.norm(data[b] - frames[a])
-            min_distance[c] = np.min(distance_matrix)
-            
-        # appends farthest set
-        
-        indexes.append(find_key(descriptor_dict, frames[min_distance.argmax()]))
-        data = np.concatenate((data, frames[min_distance.argmax()]), axis = 0)
-        frames.pop(min_distance.argmax())
-    
-    return indexes
-        
-def compress(dset: List[Atoms], k: int = DEFAULT_K, cutoff: float = DEFAULT_CUTOFF, h: float = DEFAULT_H, batch_size: int = DEFAULT_BS,
+def compress_dataset(dset: List[Atoms], k: int = DEFAULT_K, cutoff: float = DEFAULT_CUTOFF, h: float = DEFAULT_H, batch_size: int = DEFAULT_BS,
              compression_value: float = None, c_type: str = 'msc', l: float = None):
     
     """Gets descriptors for each frame
