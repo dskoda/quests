@@ -1,7 +1,5 @@
-from ase.io import read
 from ase import Atoms
 from numba.typed import List
-from numba import types
 from bayes_opt import BayesianOptimization
 from quests.entropy import perfect_entropy, diversity
 from quests.descriptor import get_descriptors
@@ -137,3 +135,34 @@ def compress_dataset(dset: List[Atoms], k: int = DEFAULT_K, cutoff: float = DEFA
             return dset[minimum_set_coverage(frames, initial_entropies, descriptor_dict, h, optimizer.max['params']['l'])
                         [:int(len(dset)*optimizer.max['params']['x'])]]
     
+def process_dataset(x: np.ndarray, initial_entropies: np.ndarray, num_chunks: int, num_sample: int, h, l):
+    N = len(x)
+    print(N)
+
+    if N <= num_sample:
+        return np.arange(N)
+
+    if N <= num_chunks * num_sample:
+        return minimum_set_coverage(x, initial_entropies, h, l, num_sample)
+
+    chunk_size = num_chunks * num_sample
+    num_subsets = int(np.ceil(N / chunk_size))
+    y = []
+    for i in range(num_subsets):
+        start = i * chunk_size
+        chunk = x[start : start + chunk_size]
+        initial_entropies_chunk = initial_entropies[start : start + chunk_size]
+        y.append(start + np.array(minimum_set_coverage(chunk, initial_entropies_chunk, h, l, num_sample)))
+
+    y = np.concatenate(y)
+    result = []
+    for ind in y:
+        result.append(x[ind])
+    i = process_dataset(result, initial_entropies[y], num_chunks, num_sample, h, l)
+    return y[i]
+
+def segment_compress(dset: List[Atoms], num_sample: int, num_chunks: int, k: int = DEFAULT_K, cutoff: float = DEFAULT_CUTOFF, h: float = DEFAULT_H, 
+                     batch_size: int = DEFAULT_BS, l: float = None):
+    frames, initial_entropies = get_frame_descriptors(dset, k = k, cutoff = cutoff, h = h, batch_size = batch_size)
+    result = process_dataset(frames, initial_entropies, num_chunks = num_chunks, num_sample = num_sample, h = h, l = l)
+    return dset[result]

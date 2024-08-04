@@ -27,7 +27,7 @@ def find_key(input_dict: dict, target: np.ndarray):
             return key
     return None
         
-def minimum_set_coverage(frames: list, initial_entropies: np.ndarray, descriptor_dict: dict, h: float, l: float):
+def minimum_set_coverage(frames: list, initial_entropies: np.ndarray, descriptor_dict: dict, h: float, l: float, value: int = None):
     
     """Given the frames and initial entropies, determine the most diverse set of atoms in the set
     
@@ -51,7 +51,10 @@ def minimum_set_coverage(frames: list, initial_entropies: np.ndarray, descriptor
     
     # loop to find order of values 
     
-    for i in range(len(frames)):
+    num = value if value != None else len(frames)
+    num = len(frames) if len(frames) <= num else num
+    
+    for i in range(num):
         entropy = np.zeros(len(frames))
         for a in range(len(frames)):
             entropy[a] = np.mean(delta_entropy(frames[a], compressed_data, h = h)) + l*initial_entropies[find_key(descriptor_dict, frames[a])]
@@ -60,3 +63,4 @@ def minimum_set_coverage(frames: list, initial_entropies: np.ndarray, descriptor
         frames.pop(entropy.argmax())
     
     return indexes
+
