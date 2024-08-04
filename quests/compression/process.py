@@ -95,7 +95,7 @@ def compress_dataset(dset: List[Atoms], k: int = DEFAULT_K, cutoff: float = DEFA
         
         # retrieve indexes
         
-        indexes = minimum_set_coverage(frames, initial_entropies, descriptor_dict, h, l = 0)
+        indexes = minimum_set_coverage(frames, initial_entropies, h, l = 0)
         
         if compression_value != None:
             return dset[indexes[:int(len(dset)*compression_value)]]
@@ -116,12 +116,12 @@ def compress_dataset(dset: List[Atoms], k: int = DEFAULT_K, cutoff: float = DEFA
             return dset[indexes[:int(len(dset)*optimizer.max['params']['x'])]]
     else:
         if compression_value != None and l != None:
-            return dset[minimum_set_coverage(frames, initial_entropies, descriptor_dict, h, l)[:int(len(dset)*compression_value)]]
+            return dset[minimum_set_coverage(frames, initial_entropies, h, l)[:int(len(dset)*compression_value)]]
         else:
             # finding optimal compression value
             
             def optimization_function(x, l):
-                indexes = minimum_set_coverage(frames, initial_entropies, descriptor_dict, h, l)
+                indexes = minimum_set_coverage(frames, initial_entropies, h, l)
                 final_data = [frames[i] for i in indexes[:int(len(dset)*x)]]
                 final_data = np.concatenate(final_data, axis = 0)
                 entropy_msc = perfect_entropy(final_data, h = h, batch_size = batch_size)
@@ -132,12 +132,11 @@ def compress_dataset(dset: List[Atoms], k: int = DEFAULT_K, cutoff: float = DEFA
             optimizer = BayesianOptimization(f=optimization_function, pbounds=bounds, random_state=1)
             optimizer.maximize(init_points=5, n_iter=20)
             
-            return dset[minimum_set_coverage(frames, initial_entropies, descriptor_dict, h, optimizer.max['params']['l'])
+            return dset[minimum_set_coverage(frames, initial_entropies, h, optimizer.max['params']['l'])
                         [:int(len(dset)*optimizer.max['params']['x'])]]
     
 def process_dataset(x: np.ndarray, initial_entropies: np.ndarray, num_chunks: int, num_sample: int, h, l):
     N = len(x)
-    print(N)
 
     if N <= num_sample:
         return np.arange(N)
@@ -165,4 +164,9 @@ def segment_compress(dset: List[Atoms], num_sample: int, num_chunks: int, k: int
                      batch_size: int = DEFAULT_BS, l: float = 0.0):
     frames, initial_entropies = get_frame_descriptors(dset, k = k, cutoff = cutoff, h = h, batch_size = batch_size)
     result = process_dataset(frames, initial_entropies, num_chunks = num_chunks, num_sample = num_sample, h = h, l = l)
-    return dset[result]
+
+    final_dataset = []
+    
+    for index in result:
+        final_dataset.append(dset[index])
+    return final_dataset
