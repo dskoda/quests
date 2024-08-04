@@ -162,7 +162,7 @@ def process_dataset(x: np.ndarray, initial_entropies: np.ndarray, num_chunks: in
     return y[i]
 
 def segment_compress(dset: List[Atoms], num_sample: int, num_chunks: int, k: int = DEFAULT_K, cutoff: float = DEFAULT_CUTOFF, h: float = DEFAULT_H, 
-                     batch_size: int = DEFAULT_BS, l: float = None):
+                     batch_size: int = DEFAULT_BS, l: float = 0.0):
     frames, initial_entropies = get_frame_descriptors(dset, k = k, cutoff = cutoff, h = h, batch_size = batch_size)
     result = process_dataset(frames, initial_entropies, num_chunks = num_chunks, num_sample = num_sample, h = h, l = l)
     return dset[result]
