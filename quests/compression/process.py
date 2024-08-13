@@ -1,12 +1,13 @@
-from ase import Atoms
-from numba.typed import List
-from bayes_opt import BayesianOptimization
-from quests.entropy import perfect_entropy, diversity
-from quests.descriptor import get_descriptors
-import numpy as np
+from typing import List
 
-from .minimum_set_coverage import minimum_set_coverage
+import numpy as np
+from ase import Atoms
+from bayes_opt import BayesianOptimization
+from quests.descriptor import get_descriptors
+from quests.entropy import diversity, perfect_entropy
+
 from .farthest_point_sampling import farthest_point_sampling
+from .minimum_set_coverage import minimum_set_coverage
 
 DEFAULT_CUTOFF: float = 5.0
 DEFAULT_K: int = 32
@@ -53,7 +54,7 @@ def compress_dataset(
     batch_size: int = DEFAULT_BS,
     compression_value: float = None,
     c_type: str = "msc",
-    l: float = None,
+    entropy_weight: float = 0,
 ):
     """Gets descriptors for each frame
 
@@ -70,7 +71,15 @@ def compress_dataset(
 
     """
 
-    assert c_type in ["msc", "msc2", "fps"]
+    assert c_type in ["msc", "fps"]
+
+    # cost function when optimizing the entropy and diversity trade-off
+    def entropy_cost_fn(frames: List[np.ndarray], indexes: List[int], frac: float):
+        selected = indexes[: int(len(frames) * frac)]
+        data = np.concatenate([frames[i] for i in selected], axis=0)
+        entropy = perfect_entropy(data, h=h, batch_size=batch_size)
+        diversity = diversity(data, h=h, batch_size=batch_size)
+        return entropy * np.log(diversity)
 
     # descriptors and initial entropies for each frame in the dataset
     frames, initial_entropies = get_frame_descriptors(dset, k, cutoff, h, batch_size)
@@ -81,62 +90,35 @@ def compress_dataset(
         descriptor_dict[i] = frames[i]
 
     if c_type == "fps":
-
         # retrieve indexes
-
         indexes = farthest_point_sampling(frames, initial_entropies, descriptor_dict)
-        if compression_value != None:
-            return dset[indexes[: int(len(dset) * compression_value)]]
-        else:
 
-            # finding optimal compression value
-
-            def optimization_function(x):
-                final_data = [frames[i] for i in indexes[: int(len(dset) * x)]]
-                final_data = np.concatenate(final_data, axis=0)
-                entropy_msc = perfect_entropy(final_data, h=h, batch_size=batch_size)
-                diversity_msc = diversity(final_data, h=h, batch_size=batch_size)
-                return entropy_msc * np.log(diversity_msc)
-
-            bounds = {"x": (0.1, 1)}
-            optimizer = BayesianOptimization(
-                f=optimization_function, pbounds=bounds, random_state=1
-            )
-            optimizer.maximize(init_points=5, n_iter=20)
-
-            return dset[indexes[: int(len(dset) * optimizer.max["params"]["x"])]]
     elif c_type == "msc":
-
         # retrieve indexes
+        indexes = minimum_set_coverage(
+            frames, initial_entropies, h, entropy_weight=entropy_weight
+        )
 
-        indexes = minimum_set_coverage(frames, initial_entropies, h, l=0)
-
-        if compression_value != None:
-            return dset[indexes[: int(len(dset) * compression_value)]]
-        else:
-            # finding optimal compression value
-
-            def optimization_function(x):
-                final_data = [frames[i] for i in indexes[: int(len(dset) * x)]]
-                final_data = np.concatenate(final_data, axis=0)
-                entropy_msc = perfect_entropy(final_data, h=h, batch_size=batch_size)
-                diversity_msc = diversity(final_data, h=h, batch_size=batch_size)
-                return entropy_msc * np.log(diversity_msc)
-
-            bounds = {"x": (0.1, 1)}
-            optimizer = BayesianOptimization(
-                f=optimization_function, pbounds=bounds, random_state=1
-            )
-            optimizer.maximize(init_points=5, n_iter=20)
-
-            return dset[indexes[: int(len(dset) * optimizer.max["params"]["x"])]]
     else:
-        if compression_value != None and l != None:
-            return dset[
-                minimum_set_coverage(frames, initial_entropies, h, l)[
-                    : int(len(dset) * compression_value)
-                ]
-            ]
+        raise ValueError("Compression type not known")
+
+    # specific compression length
+    if compression_value is not None:
+        compression_len = int(len(dset) * compression_value)
+        selected_idx = indexes[:compression_len]
+        return [x for i, x in enumerate(dset) if i in selected_idx]
+
+    # find optimal compression
+    fn = lambda x: entropy_cost_fn(frames=frames, indexes=indexes, frac=x)
+
+    bounds = {"x": (0.1, 1)}
+    optimizer = BayesianOptimization(f=fn, pbounds=bounds, random_state=1)
+    optimizer.maximize(init_points=5, n_iter=20)
+
+    return dset[indexes[: int(len(dset) * optimizer.max["params"]["x"])]]
+
+
+"""
         else:
             # finding optimal compression value
 
@@ -159,6 +141,7 @@ def compress_dataset(
                     frames, initial_entropies, h, optimizer.max["params"]["l"]
                 )[: int(len(dset) * optimizer.max["params"]["x"])]
             ]
+    """
 
 
 def process_dataset(
