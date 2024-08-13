@@ -29,7 +29,7 @@ def find_key(input_dict: dict, target: np.ndarray):
 
 
 def minimum_set_coverage(
-    frames: list, initial_entropies: np.ndarray, h: float, l: float, value: int = None
+    frames: list, initial_entropies: np.ndarray, h: float, entropy_weight: float, value: int = None
 ):
     """Given the frames and initial entropies, determine the most diverse set of atoms in the set
 
@@ -38,7 +38,9 @@ def minimum_set_coverage(
         initial_entropies (np.ndarray): array with initial entropies of each of the frames
         descriptor_dict (dict): dictionary containing descriptors
         h (float): h value
-        l (float): lambda value
+        entropy_weight (float): weight that considers the "novelty" of a new sample based on
+            the values of dH and the entropy of the sample itself. Higher weights favor samples
+            with higher initial entropy.
 
     Returns: indexes (list): list of indexes of the most diverse frames in order
 
@@ -66,7 +68,7 @@ def minimum_set_coverage(
         for a in range(len(frames)):
             entropy[a] = (
                 np.mean(delta_entropy(frames[a], compressed_data, h=h))
-                + l * initial_entropies[find_key(descriptor_dict, frames[a])]
+                + entropy_weight * initial_entropies[find_key(descriptor_dict, frames[a])]
             )
         compressed_data = np.concatenate(
             (compressed_data, frames[entropy.argmax()]), axis=0
