@@ -2,6 +2,7 @@ from typing import Callable, List, Tuple
 
 import numpy as np
 from ase import Atoms
+from bayes_opt import BayesianOptimization
 from quests.descriptor import get_descriptors
 from quests.entropy import DEFAULT_BANDWIDTH, DEFAULT_BATCH, diversity, perfect_entropy
 
@@ -87,14 +88,14 @@ class DatasetCompressor:
     ):
         self._check_frac(min_frac)
 
-        fn = lambda x: self.cost_fn(x, method=method)
+        fn = lambda frac: self.cost_fn(frac=frac, method=method)
 
         bounds = {"frac": (min_frac, 1)}
         opt = BayesianOptimization(f=fn, pbounds=bounds, random_state=random_state)
         opt.maximize(init_points=init_points, n_iter=n_iter)
-        final_size = self.frac_to_size(opt.max["params"]["frac"])
+        optimal_frac = opt.max["params"]["frac"]
 
-        return [x for i, x in enumerate(self.dset) if i in indices[:final_size]]
+        return self.fixed_compression(method, optimal_frac)
 
     def get_indices(self, method: str, size: int, **kwargs):
         self._check_compression_method(method)

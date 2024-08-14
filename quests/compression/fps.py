@@ -1,11 +1,13 @@
 import itertools
-import numpy as np
 from typing import List
+
+import numpy as np
 from scipy.spatial.distance import cdist
 
 
 def fps(descriptors: List[np.ndarray], entropies: np.ndarray, size: int):
-    # setting up the calculation
+    # setting up the calculation: the initial data point is selected to be
+    # the one with highest entropy (most diversity of environments)
     remaining = list(range(len(descriptors)))
     next_i = entropies.argmax()
     compressed = [next_i]
@@ -13,14 +15,12 @@ def fps(descriptors: List[np.ndarray], entropies: np.ndarray, size: int):
     entropies = entropies.tolist()
     entropies.pop(next_i)
 
+    # now, we sample the dataset until convergence
     matrix = []
     while len(compressed) < size:
         # computes the distances towards the latest sampled configuration
         x = descriptors[next_i]
-        dists = [
-            np.min(cdist(x, descriptors[i]))
-            for i in remaining
-        ]
+        dists = [np.min(cdist(x, descriptors[i])) for i in remaining]
         matrix.append(dists)
 
         # creates a temporary distance matrix to do the farthest point sampling
