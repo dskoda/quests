@@ -19,6 +19,7 @@ dependencies = [
     "click",
     "pynndescent",
     "scikit-learn",
+    "bayesian-optimization",
 ]
 
 [project.scripts]
