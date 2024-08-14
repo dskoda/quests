@@ -1,11 +1,11 @@
-from typing import List, Callable, Tuple
+from typing import Callable, List, Tuple
 
 import numpy as np
 from ase import Atoms
 from quests.descriptor import get_descriptors
-from quests.entropy import diversity, perfect_entropy, DEFAULT_BANDWIDTH, DEFAULT_BATCH
+from quests.entropy import DEFAULT_BANDWIDTH, DEFAULT_BATCH, diversity, perfect_entropy
 
-from .farthest_point_sampling import farthest_point_sampling
+from .fps import fps
 from .minimum_set_coverage import minimum_set_coverage
 
 
@@ -22,10 +22,12 @@ class DatasetCompressor:
         self.bandwidth = bandwidth
         self.batch_size = batch_size
         self._frames = [descriptor_fn(at) for at in dset]
-        self._entropies = np.array([
-            perfect_entropy(frame, h=bandwidth, batch_size=batch_size)
-            for frame in self._frames
-        ])
+        self._entropies = np.array(
+            [
+                perfect_entropy(frame, h=bandwidth, batch_size=batch_size)
+                for frame in self._frames
+            ]
+        )
 
     def entropy(self, selected: List[int] = None):
         if selected is None:
@@ -64,13 +66,13 @@ class DatasetCompressor:
     def fixed_compression(self, method: str = "msc", frac: float = None):
         self._check_frac(frac)
 
-        indices = self.get_indices(method)
-        final_size = self.frac_to_size(frac)
-        return [x for i, x in enumerate(self.dset) if i in indices[:final_size]]
-
-    def cost_fn(self, frac, indices: List[int]):
         size = self.frac_to_size(frac)
-        selected = indexes[:size]
+        indices = self.get_indices(method, size)
+        return [x for i, x in enumerate(self.dset) if i in indices]
+
+    def cost_fn(self, frac, method):
+        size = self.frac_to_size(frac)
+        selected = self.get_indices(method, size)
         entropy = self.entropy(selected)
         div = self.diversity(selected)
         return entropy * div
@@ -85,8 +87,7 @@ class DatasetCompressor:
     ):
         self._check_frac(min_frac)
 
-        indices = self.get_indices(method)
-        fn = lambda x: self.cost_fn(x, indices=indices)
+        fn = lambda x: self.cost_fn(x, method=method)
 
         bounds = {"frac": (min_frac, 1)}
         opt = BayesianOptimization(f=fn, pbounds=bounds, random_state=random_state)
@@ -95,14 +96,14 @@ class DatasetCompressor:
 
         return [x for i, x in enumerate(self.dset) if i in indices[:final_size]]
 
-    def get_indices(self, method, **kwargs):
+    def get_indices(self, method: str, size: int, **kwargs):
         self._check_compression_method(method)
         if method == "fps":
-            return farthest_point_sampling(self._frames, self._entropies, **kwargs)
+            return fps(self._frames, self._entropies, size, **kwargs)
 
         if method == "msc":
             return minimum_set_coverage(
-                self._frames, self._entropies, self.bandwidth, **kwargs
+                self._frames, self._entropies, size, self.bandwidth, **kwargs
             )
 
         raise ValueError("Compression method not known")
