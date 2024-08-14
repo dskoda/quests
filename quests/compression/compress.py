@@ -62,7 +62,8 @@ class DatasetCompressor:
         assert frac >= 0.0 and frac <= 1.0, "frac has to be between zero and one"
 
     def frac_to_size(self, frac):
-        return int(np.ceil(self.dataset_size * frac))
+        size = int(np.ceil(self.dataset_size * frac))
+        return min(size, self.dataset_size)
 
     def fixed_compression(self, method: str = "msc", frac: float = None):
         self._check_frac(frac)
