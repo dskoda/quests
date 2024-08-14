@@ -37,13 +37,14 @@ def get_frame_descriptors(
 
     """
 
-    frames_orig = []
-    initial_entropies = []
+    frames = []
+    entropies = []
     for frame in dset:
         y = get_descriptors([frame], k=k, cutoff=cutoff)
-        frames_orig.append(y)
-        initial_entropies.append(perfect_entropy(y, h=h, batch_size=batch_size))
-    return frames_orig, np.array(initial_entropies)
+        entropy = perfect_entropy(y, h=h, batch_size=batch_size)
+        frames.append(y)
+        entropies.append(entropy)
+    return frames, np.array(entropies)
 
 
 def compress_dataset(
@@ -54,7 +55,7 @@ def compress_dataset(
     batch_size: int = DEFAULT_BS,
     compression_value: float = None,
     c_type: str = "msc",
-    entropy_weight: float = 0,
+    entropy_weight: float = 0.0,
 ):
     """Gets descriptors for each frame
 
@@ -82,21 +83,16 @@ def compress_dataset(
         return entropy * np.log(diversity)
 
     # descriptors and initial entropies for each frame in the dataset
-    frames, initial_entropies = get_frame_descriptors(dset, k, cutoff, h, batch_size)
-
-    # dictionary with index & descriptors
-    descriptor_dict = {}
-    for i in range(len(frames)):
-        descriptor_dict[i] = frames[i]
+    frames, entropies = get_frame_descriptors(dset, k, cutoff, h, batch_size)
 
     if c_type == "fps":
         # retrieve indexes
-        indexes = farthest_point_sampling(frames, initial_entropies, descriptor_dict)
+        indexes = farthest_point_sampling(frames, entropies)
 
     elif c_type == "msc":
         # retrieve indexes
         indexes = minimum_set_coverage(
-            frames, initial_entropies, h, entropy_weight=entropy_weight
+            frames, entropies, h, entropy_weight=entropy_weight
         )
 
     else:
@@ -123,7 +119,7 @@ def compress_dataset(
             # finding optimal compression value
 
             def optimization_function(x, l):
-                indexes = minimum_set_coverage(frames, initial_entropies, h, l)
+                indexes = minimum_set_coverage(frames, entropies, h, l)
                 final_data = [frames[i] for i in indexes[: int(len(dset) * x)]]
                 final_data = np.concatenate(final_data, axis=0)
                 entropy_msc = perfect_entropy(final_data, h=h, batch_size=batch_size)
@@ -138,7 +134,7 @@ def compress_dataset(
 
             return dset[
                 minimum_set_coverage(
-                    frames, initial_entropies, h, optimizer.max["params"]["l"]
+                    frames, entropies, h, optimizer.max["params"]["l"]
                 )[: int(len(dset) * optimizer.max["params"]["x"])]
             ]
     """

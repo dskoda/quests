@@ -84,7 +84,7 @@ def diversity(
         entropy (float): entropy of the dataset given by `x`.
     """
     p_x = kernel_sum(x, x, h=h, batch_size=batch_size)
-    return np.sum(1 / p_x)
+    return np.log(np.sum(1 / p_x))
 
 
 @nb.njit(fastmath=True, parallel=True, cache=True)

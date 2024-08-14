@@ -27,18 +27,22 @@ def find_key(input_dict: dict, target: np.ndarray):
     return None
 
 
-def farthest_point_sampling(frames, initial_entropies, descriptor_dict):
+def farthest_point_sampling(frames, initial_entropies):
     """Given the frames and initial entropies, determine the most diverse set of atoms in the set
 
     Arguments:
         frames (list): descriptors of each of the frames
         initial_entropies (np.ndarray): array with initial entropies of each of the frames
-        descriptor_dict (dict): dictionary containing descriptors
 
     Returns: indexes (list): list of indexes of the most diverse frames in order
 
 
     """
+
+    # dictionary with index & descriptors
+    descriptor_dict = {}
+    for i in range(len(frames)):
+        descriptor_dict[i] = frames[i]
 
     indexes = []
 
