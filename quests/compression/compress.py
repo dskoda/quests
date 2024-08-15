@@ -7,7 +7,6 @@ from quests.descriptor import get_descriptors
 from quests.entropy import DEFAULT_BANDWIDTH, DEFAULT_BATCH, diversity, perfect_entropy
 
 from .fps import fps
-from .minimum_set_coverage import minimum_set_coverage
 
 
 class DatasetCompressor:
@@ -100,12 +99,4 @@ class DatasetCompressor:
 
     def get_indices(self, method: str, size: int, **kwargs):
         self._check_compression_method(method)
-        if method == "fps":
-            return fps(self._frames, self._entropies, size, **kwargs)
-
-        if method == "msc":
-            return minimum_set_coverage(
-                self._frames, self._entropies, size, self.bandwidth, **kwargs
-            )
-
-        raise ValueError("Compression method not known")
+        return fps(self._frames, self._entropies, size, method=method)

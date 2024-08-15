@@ -2,10 +2,28 @@ import itertools
 from typing import List
 
 import numpy as np
-from scipy.spatial.distance import cdist
+from quests.matrix import cdist
 
 
-def fps(descriptors: List[np.ndarray], entropies: np.ndarray, size: int):
+def select_fps_greedy(dm: np.ndarray, entropies: np.ndarray) -> int:
+    return dm.min(0).argmax()
+
+
+def select_msc_greedy(dm: np.ndarray, entropies: np.ndarray) -> int:
+    return (dm.mean(0) * np.array(entropies)).argmax()
+
+
+SELECT_FNS = {
+    "fps": select_fps_greedy,
+    "msc": select_msc_greedy,
+}
+
+
+def fps(descriptors: List[np.ndarray], entropies: np.ndarray, size: int, method: str = "fps") -> List[int]:
+    # select the sampling strategy
+    assert method in SELECT_FNS, f"Method {method} not supported"
+    select_fn = SELECT_FNS[method]
+
     # setting up the calculation: the initial data point is selected to be
     # the one with highest entropy (most diversity of environments)
     remaining = list(range(len(descriptors)))
@@ -28,7 +46,7 @@ def fps(descriptors: List[np.ndarray], entropies: np.ndarray, size: int):
 
         # select the element that has the largest distance towards all the existing
         # points in the compressed set AND has high entropy
-        selected = (dm.min(0) * np.array(entropies)).argmax()
+        selected = select_fn(dm, entropies)
 
         # update the loop and the set of compressed data
         next_i = remaining.pop(selected)
