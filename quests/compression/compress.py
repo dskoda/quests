@@ -21,27 +21,27 @@ class DatasetCompressor:
         self.descriptor_fn = descriptor_fn
         self.bandwidth = bandwidth
         self.batch_size = batch_size
-        self._frames = [descriptor_fn(at) for at in dset]
+        self._descriptors = [descriptor_fn(at) for at in dset]
         self._entropies = np.array(
             [
-                perfect_entropy(frame, h=bandwidth, batch_size=batch_size)
-                for frame in self._frames
+                perfect_entropy(x, h=bandwidth, batch_size=batch_size)
+                for x in self._descriptors
             ]
         )
 
     def entropy(self, selected: List[int] = None):
         if selected is None:
-            data = np.concatenate(self._frames, axis=0)
+            data = np.concatenate(self._descriptors, axis=0)
         else:
-            data = np.concatenate([self._frames[i] for i in selected], axis=0)
+            data = np.concatenate([self._descriptors[i] for i in selected], axis=0)
 
         return perfect_entropy(data, h=self.bandwidth, batch_size=self.batch_size)
 
     def diversity(self, selected: List[int] = None):
         if selected is None:
-            data = np.concatenate(self._frames, axis=0)
+            data = np.concatenate(self._descriptors, axis=0)
         else:
-            data = np.concatenate([self._frames[i] for i in selected], axis=0)
+            data = np.concatenate([self._descriptors[i] for i in selected], axis=0)
 
         return diversity(data, h=self.bandwidth, batch_size=self.batch_size)
 
@@ -99,4 +99,4 @@ class DatasetCompressor:
 
     def get_indices(self, method: str, size: int, **kwargs):
         self._check_compression_method(method)
-        return fps(self._frames, self._entropies, size, method=method)
+        return fps(self._descriptors, self._entropies, size, method=method)

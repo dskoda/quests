@@ -13,13 +13,20 @@ def select_msc_greedy(dm: np.ndarray, entropies: np.ndarray) -> int:
     return (dm.mean(0) * np.array(entropies)).argmax()
 
 
+def select_msc_weighted(dm: np.ndarray, entropies: np.ndarray, weight=1.0) -> int:
+    return (dm.mean(0) + weight * np.array(entropies)).argmax()
+
+
 SELECT_FNS = {
     "fps": select_fps_greedy,
     "msc": select_msc_greedy,
+    "mscw": select_msc_weighted,
 }
 
 
-def fps(descriptors: List[np.ndarray], entropies: np.ndarray, size: int, method: str = "fps") -> List[int]:
+def fps(
+    descriptors: List[np.ndarray], entropies: np.ndarray, size: int, method: str = "fps"
+) -> List[int]:
     # select the sampling strategy
     assert method in SELECT_FNS, f"Method {method} not supported"
     select_fn = SELECT_FNS[method]
