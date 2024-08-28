@@ -19,7 +19,7 @@ def mean_fps(
     import fpsample
 
     avg_descriptors = np.array([x.mean(0) for x in descriptors])
-    selected = fpsample.bucket_fps_kdtree_sampling(avg_descriptors, size)
+    selected = fpsample.fps_sampling(avg_descriptors, size)
     return selected
 
 def k_means(
