@@ -31,7 +31,7 @@ def k_means(
     kmeans = KMeans(n_clusters=size, n_init="auto").fit(avg_descriptors)
     selected = []
     for num in range(size):
-        selected.append(np.random.choice(np.where(kmeans.labels_ == num)))
+        selected.append(np.random.choice(np.where(kmeans.labels_ == num)[0]))
     return selected        
 
 # TODO: Ben, please implement
@@ -56,6 +56,6 @@ def dbscan_sample(
     
     selected = []
     for num in range(dbscan.labels_.max()):
-        selected.append(np.random.choice(np.where(dbscan.labels_ == num)))
+        selected.append(np.random.choice(np.where(dbscan.labels_ == num)[0]))
     return selected 
     
