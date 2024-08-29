@@ -91,7 +91,7 @@ class DatasetCompressor:
         fn = lambda frac: self.cost_fn(frac=frac, method=method)
 
         bounds = {"frac": (min_frac, 1)}
-        opt = BayesianOptimization(f=fn, pbounds=bounds, random_state=random_state)
+        opt = BayesianOptimization(f=fn, pbounds=bounds, random_state=random_state, allow_duplicate_points = True)
         opt.maximize(init_points=init_points, n_iter=n_iter)
         optimal_frac = opt.max["params"]["frac"]
 
