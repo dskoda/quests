@@ -137,6 +137,40 @@ batch_size = 10000
 H = perfect_entropy(x, h=h, batch_size=batch_size)
 ```
 
+#### Computing overlap between datasets
+
+To compute the overlap between two datasets, you can use the `overlap` command-line interface or the API:
+
+```bash
+quests overlap dataset1.xyz dataset2.xyz -o results.json
+```
+
+This command will compute the overlap between the environments in dataset1.xyz and dataset2.xyz, and save the results to results.json.
+
+Using the API:
+
+```python
+from ase.io import read
+from quests.descriptor import get_descriptors
+from quests.entropy import delta_entropy
+
+dataset1 = read("dataset1.xyz", index=":")
+dataset2 = read("dataset2.xyz", index=":")
+
+k, cutoff = 32, 5.0
+x1 = get_descriptors(dataset1, k=k, cutoff=cutoff)
+x2 = get_descriptors(dataset2, k=k, cutoff=cutoff)
+
+h = 0.015  # bandwidth
+eps = 1e-3  # threshold for overlap
+delta = delta_entropy(x1, x2, h=h)
+overlap_value = (delta < eps).mean()
+
+print(f"Overlap value: {overlap_value:.4f}")
+```
+
+This example computes the overlap between two datasets using a bandwidth of 0.015 and an overlap threshold of 1e-3. The overlap is defined as the fraction of environments where the delta entropy is below the threshold.
+
 ### Citing
 
 If you use QUESTS in a publication, please cite the following paper:
