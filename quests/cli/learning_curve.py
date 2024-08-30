@@ -64,12 +64,6 @@ def get_sampling_fn(x: np.ndarray, fraction):
     help=f"Bandwidth when computing the kernel (default: {DEFAULT_BANDWIDTH})",
 )
 @click.option(
-    "--estimate_bw",
-    is_flag=True,
-    default=False,
-    help="If True, estimates the bandwidth based on the density",
-)
-@click.option(
     "-f",
     "--fractions",
     type=str,
@@ -80,8 +74,8 @@ def get_sampling_fn(x: np.ndarray, fraction):
     "-n",
     "--num_runs",
     type=int,
-    default=20,
-    help="Number of runs to resample for each fraction (default: 20)",
+    default=3,
+    help="Number of runs to resample for each fraction (default: 3)",
 )
 @click.option(
     "-j",
@@ -115,7 +109,6 @@ def learning_curve(
     cutoff,
     nbrs,
     bandwidth,
-    estimate_bw,
     fractions,
     num_runs,
     jobs,
@@ -131,11 +124,6 @@ def learning_curve(
         nb.set_num_threads(jobs)
 
     x, descriptor_time = descriptors_from_file(file, k=nbrs, cutoff=cutoff)
-
-    if estimate_bw:
-        dset = read(file, index=":")
-        volume = np.mean([at.get_volume() / len(at) for at in dset])
-        bandwidth = get_bandwidth(volume)
 
     fractions = [float(f) for f in fractions.split(",")]
 
@@ -154,7 +142,7 @@ def learning_curve(
 
     for fraction in fractions:
         logger(f"Computing entropy for fraction: {fraction}")
-        
+
         # determine how the dataset is going to be sampled
         sample_items = get_sampling_fn(x, fraction)
 
@@ -172,18 +160,20 @@ def learning_curve(
 
         mean_entropy = np.mean(entropies)
         std_entropy = np.std(entropies)
-        
+
         logger(f"Entropy: {mean_entropy:.3f} ± {std_entropy:.3f} (nats)")
         logger(f"computed from {num_runs} runs.")
         logger(f"Max theoretical entropy: {np.log(len(xsample)):.3f} (nats)")
 
-        results["learning_curve"].append({
-            "fraction": fraction,
-            "entropies": entropies,
-            "entropies_times": entropies_times,
-            "mean_entropy": mean_entropy,
-            "std_entropy": std_entropy,
-        })
+        results["learning_curve"].append(
+            {
+                "fraction": fraction,
+                "entropies": entropies,
+                "entropies_times": entropies_times,
+                "mean_entropy": mean_entropy,
+                "std_entropy": std_entropy,
+            }
+        )
 
     # log the results
     if output is not None:
