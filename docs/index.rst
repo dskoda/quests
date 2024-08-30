@@ -11,7 +11,7 @@ QUESTS provides model-free uncertainty and entropy estimation methods for intera
 
 This package also contains tools to interface with other representations and packages.
 
-Learn more how to :ref:`install <installation>` the package, or learn more how to use it under the `quickstart <quickstart>`.
+Learn more how to :ref:`install <installation>` the package, or learn more how to use it under the :ref:`quickstart <quickstart>`.
 
 .. toctree::
    :maxdepth: 2
