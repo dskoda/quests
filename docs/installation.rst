@@ -39,4 +39,4 @@ To install QUESTS with GPU support:
 
     pip install quests[gpu]
 
-Note that GPU support requires a CUDA-capable NVIDIA GPU and the appropriate CUDA toolkit installed on your system.
+Note that GPU support requires a CUDA-capable GPU and the appropriate CUDA toolkit installed on your system.
