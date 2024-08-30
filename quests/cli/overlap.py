@@ -58,7 +58,7 @@ from .log import format_time, logger
     "-e",
     "--eps",
     type=float,
-    default=1e-3,
+    default=1e-5,
     help="Threshold for considering environments as overlapping (default: 1e-3)",
 )
 @click.option(

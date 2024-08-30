@@ -162,7 +162,7 @@ x1 = get_descriptors(test, k=k, cutoff=cutoff)
 x2 = get_descriptors(ref, k=k, cutoff=cutoff)
 
 h = 0.015  # bandwidth
-eps = 1e-3  # threshold for overlap
+eps = 1e-5  # threshold for overlap
 delta = delta_entropy(x1, x2, h=h)
 overlap = (delta < eps).mean()
 
