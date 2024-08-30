@@ -171,6 +171,40 @@ print(f"Overlap value: {overlap:.4f}")
 
 This example computes the overlap between two datasets using a bandwidth of 0.015 and an overlap threshold of 1e-3. The overlap is defined as the fraction of environments where the delta entropy is below the threshold.
 
+#### Obtaining a Learning Curve
+
+To generate a learning curve using the command line interface, you can use the `learning_curve` command. This command computes the entropy at different dataset fractions, allowing you to see how the entropy changes as you include more data.
+
+Here's an example of how to use it:
+
+```bash
+quests learning_curve dataset.xyz -o learning_curve_results.json
+```
+
+This command will:
+1. Use the default fractions (0.1 to 0.9 in steps of 0.1)
+2. Compute the entropy for each fraction
+3. Run the computation 3 times for each fraction (default value)
+4. Save the results in a JSON file named `learning_curve_results.json`
+
+You can customize the command with various options:
+
+- `-f` or `--fractions`: Specify custom fractions (e.g., `-f 0.2,0.4,0.6,0.8`)
+- `-n` or `--num_runs`: Set the number of runs for each fraction (e.g., `-n 5`)
+- `-c` or `--cutoff`: Set the cutoff distance for neighbor lists (e.g., `-c 5.0`)
+- `-k` or `--nbrs`: Set the number of neighbors for the descriptor (e.g., `-k 32`)
+- `-b` or `--bandwidth`: Set the bandwidth for entropy calculation (e.g., `-b 0.015`)
+
+For example, a more customized command might look like this:
+
+```bash
+quests learning_curve dataset.xyz -f 0.2,0.4,0.6,0.8 -n 5 -c 5.0 -k 32 -b 0.015 -o custom_learning_curve.json
+```
+
+This will compute the learning curve for fractions 0.2, 0.4, 0.6, and 0.8, running each fraction 5 times, with a cutoff of 5.0 Å, 32 neighbors, and a bandwidth of 0.015.
+
+The resulting JSON file will contain detailed information about the learning curve, including the entropy values for each fraction and run, as well as the mean and standard deviation of the entropy for each fraction.
+
 ### Citing
 
 If you use QUESTS in a publication, please cite the following paper:
