@@ -60,7 +60,6 @@ html_static_path = ["_static"]
 html_theme_options = {
     "sidebar_hide_name": False,
     "navigation_with_keys": True,
-    "announcement": "This is a beta version of the documentation.",
     "light_css_variables": {
         "color-brand-primary": "#336790",
         "color-brand-content": "#336790",

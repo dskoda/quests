@@ -29,6 +29,23 @@ Learn more how to :doc:`install <installation>` the package, or learn more how t
 
    modules
 
+======
+Citing
+======
+
+If you use quests in your project, please consider citing the `publication <https://arxiv.org/abs/2404.12367>`_ describing the software:
+
+.. code-block:: bibtex
+
+    @article{schwalbekoda2024information,
+        title = {Information theory unifies atomistic machine learning, uncertainty quantification, and materials thermodynamics},
+        author = {Schwalbe-Koda, Daniel and Hamel, Sebastien and Sadigh, Babak and Zhou, Fei and Lordi, Vincenzo},
+        year = {2024},
+        journal = {arXiv:2404.12367},
+        url = {https://arxiv.org/abs/2404.12367},
+    }
+
+
 Indices and tables
 ==================
 
