@@ -5,10 +5,10 @@ Among the methods, we propose a structural descriptor based on k-nearest neighbo
 
 1. Is fast to compute, as it uses only distances between atoms within an environment.
 Because the computation of descriptors is efficiently parallelized, generation of descriptors for 1.5M environments takes about 3 seconds on 56 threads (tested against Intel Xeon CLX-8276L CPUs).
-2. Can be used to generate distributions and, in combination with information theory, gives rise to entropy values.
-3. Is shown to recover thermodynamic quantities, order parameters, and many useful properties of information theory.
+2. Can be used to analyze datasets for atomistic machine learning, providing quantities such as dataset entropy, diversity, information gap, and others.
+3. Is shown to recover many useful properties of information theory, and can be used to inform dataset compression
 
-This package also contains metrics to quantify the diversity of a dataset using this descriptor, and tools to interface with other representations and packages.
+This package also contains tools to interface with other representations and packages.
 
 ## Installation
 
@@ -194,6 +194,6 @@ SPDX: BSD-3-Clause
 
 ## Acknowledgements
 
-This work was produced under the auspices of the U.S. Department of Energy by Lawrence Livermore National Laboratory under Contract DE-AC52-07NA27344, with support from LLNL's LDRD program under tracking codes 22-ERD-055 and 23-SI-006.
+This work was initially produced under the auspices of the U.S. Department of Energy by Lawrence Livermore National Laboratory under Contract DE-AC52-07NA27344, with support from LLNL's LDRD program under tracking codes 22-ERD-055 and 23-SI-006.
 
 Code released as LLNL-CODE-858914
