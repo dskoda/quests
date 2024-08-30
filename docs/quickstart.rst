@@ -9,15 +9,15 @@ Using QUESTS with the command line interface
 
 Once installed, you can use the ``quests`` command to perform different analyses. For example, to compute the entropy of any dataset (the input can be anything that ASE reads, including xyz files), you can use the ``quests entropy`` command:
 
-```bash
-quests entropy dump.lammpstrj --bandwidth 0.015
-```
+.. code-block:: bash
+
+    quests entropy dump.lammpstrj --bandwidth 0.015
 
 For subsampling the dataset and avoiding using the entire dataset, use the ``entropy_sampler`` example:
 
-```bash
-quests entropy_sampler dataset.xyz --batch_size 20000 -s 100000 -n 3
-```
+.. code-block:: bash
+
+    quests entropy_sampler dataset.xyz --batch_size 20000 -s 100000 -n 3
 
 ``-s`` specifies the number of sampled environments, ``-n`` specifies how many runs will be computed (for statistics).
 
@@ -57,6 +57,7 @@ By default, QUESTS concatenates all the environments into a single matrix.
 If you want to generate descriptors for separate systems, you can generate them using a loop:
 
 .. code-block:: python
+
     from ase.io import read
     from quests.descriptor import get_descriptors
 
