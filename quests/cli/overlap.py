@@ -18,8 +18,8 @@ from .log import format_time, logger
 
 
 @click.command("overlap")
-@click.argument("dataset1", required=1)
-@click.argument("dataset2", required=1)
+@click.argument("test_set", required=1)
+@click.argument("reference_set", required=1)
 @click.option(
     "-c",
     "--cutoff",
@@ -56,7 +56,7 @@ from .log import format_time, logger
 )
 @click.option(
     "-e",
-    "--epsilon",
+    "--eps",
     type=float,
     default=1e-3,
     help="Threshold for considering environments as overlapping (default: 1e-3)",
@@ -75,14 +75,14 @@ from .log import format_time, logger
     help="If True, overwrite the output file",
 )
 def overlap(
-    dataset1,
-    dataset2,
+    test_set,
+    reference_set,
     cutoff,
     nbrs,
     bandwidth,
     jobs,
     batch_size,
-    epsilon,
+    eps,
     output,
     overwrite,
 ):
@@ -93,13 +93,13 @@ def overlap(
     if jobs is not None:
         nb.set_num_threads(jobs)
 
-    x1, _ = descriptors_from_file(dataset1, nbrs, cutoff)
-    x2, _ = descriptors_from_file(dataset2, nbrs, cutoff)
+    xt, _ = descriptors_from_file(test_set, nbrs, cutoff)
+    xr, _ = descriptors_from_file(reference_set, nbrs, cutoff)
 
     logger("Computing overlap...")
     with Timer() as t:
-        delta = delta_entropy(x1, x2, h=bandwidth, batch_size=batch_size)
-        overlap_value = (delta < epsilon).mean()
+        delta = delta_entropy(xt, xr, h=bandwidth, batch_size=batch_size)
+        overlap_value = (delta < eps).mean()
     overlap_time = t.time
     logger(f"Overlap computed in: {format_time(overlap_time)}")
     logger(f"Overlap value: {overlap_value:.4f}")
@@ -108,15 +108,15 @@ def overlap(
         sys.exit()
 
     results = {
-        "dataset1_file": dataset1,
-        "dataset2_file": dataset2,
-        "dataset1_envs": x1.shape[0],
-        "dataset2_envs": x2.shape[0],
+        "test_file": test_set,
+        "reference_file": reference_set,
+        "test_envs": xt.shape[0],
+        "reference_envs": xr.shape[0],
         "k": nbrs,
         "cutoff": cutoff,
         "bandwidth": bandwidth,
         "jobs": jobs,
-        "epsilon": epsilon,
+        "eps": eps,
         "overlap": float(overlap_value),
         "computation_time": overlap_time,
     }

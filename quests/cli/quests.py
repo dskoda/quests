@@ -6,6 +6,7 @@ from quests.cli.compute_dH import dH
 from quests.cli.entropy import entropy
 from quests.cli.entropy_sampler import entropy_sampler
 from quests.cli.make_descriptors import make_descriptors
+from quests.cli.overlap import overlap
 
 
 class QuestsGroup(click.Group):
@@ -23,6 +24,7 @@ quests.add_command(make_descriptors)
 quests.add_command(dH)
 quests.add_command(approx_dH)
 quests.add_command(bandwidth)
+quests.add_command(overlap)
 
 
 if __name__ == "__main__":
