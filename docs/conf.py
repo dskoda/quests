@@ -22,7 +22,7 @@ copyright = "2024, Daniel Schwalbe-Koda"
 author = "Daniel Schwalbe-Koda"
 
 # The full version, including alpha/beta/rc tags
-release = "0.1.0"
+release = "2024.06.21"
 
 
 # -- General configuration ---------------------------------------------------
@@ -78,15 +78,12 @@ html_sidebars = {
         "sidebar/search.html",
         "sidebar/scroll-start.html",
         "sidebar/navigation.html",
-        "sidebar/ethical-ads.html",
         "sidebar/scroll-end.html",
     ]
 }
 
 # Custom sidebar contents
-html_additional_pages = {
-    'sidebar': 'sidebar.html'
-}
+html_additional_pages = {"sidebar": "sidebar.html"}
 
 # Rename "Module Index" to "API Reference"
 html_domain_indices = False
@@ -96,4 +93,4 @@ html_copy_source = False
 html_show_sourcelink = False
 html_show_sphinx = False
 html_show_copyright = True
-html_use_opensearch = 'https://quests.readthedocs.io'
+html_use_opensearch = "https://quests.readthedocs.io"
