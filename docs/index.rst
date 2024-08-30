@@ -1,5 +1,5 @@
-Welcome to QUESTS's documentation!
-==================================
+QUESTS documentation
+====================
 
 QUESTS (Quick Uncertainty and Entropy via STructural Similarity) provides model-free uncertainty and entropy estimation methods for interatomic potentials.
 Among the methods, we propose a structural descriptor based on k-nearest neighbors that:
@@ -14,6 +14,7 @@ This package also contains tools to interface with other representations and pac
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
+    license
 
 API Reference
 =============
