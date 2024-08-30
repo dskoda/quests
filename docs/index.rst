@@ -7,10 +7,6 @@ QUESTS (QUantum Entropy Sampling Techniques for Structures) is a Python package 
    :maxdepth: 2
    :caption: Contents:
 
-   installation
-   tutorials/index
-   api/index
-
 API Reference
 =============
 
