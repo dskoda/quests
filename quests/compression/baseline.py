@@ -30,9 +30,10 @@ def k_means(
     avg_descriptors = np.array([x.mean(0) for x in descriptors])
     kmeans = KMeans(n_clusters=size, n_init="auto").fit(avg_descriptors)
     selected = []
-    for num in range(size):
-        selected.append(np.random.choice(np.where(kmeans.labels_ == num)[0]))
-    return selected        
+    for num in range(kmeans.labels_.max()):
+        if sum(kmeans.labels_ == num) != 0:
+            selected.append(np.random.choice(np.where(kmeans.labels_ == num)[0]))
+    return selected                
 
 # TODO: Ben, please implement
 # https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html#sklearn.cluster.DBSCAN
