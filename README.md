@@ -173,9 +173,8 @@ This example computes the overlap between two datasets using a bandwidth of 0.01
 
 #### Obtaining a Learning Curve
 
-To generate a learning curve using the command line interface, you can use the `learning_curve` command. This command computes the entropy at different dataset fractions, allowing you to see how the entropy changes as you include more data.
-
-Here's an example of how to use it:
+To generate a learning curve using the command line interface, you can use the `learning_curve` command.
+This command computes the entropy at different dataset fractions, allowing you to see how the entropy changes as you include more data:
 
 ```bash
 quests learning_curve dataset.xyz -o learning_curve_results.json
@@ -191,11 +190,9 @@ You can customize the command with various options:
 
 - `-f` or `--fractions`: Specify custom fractions (e.g., `-f 0.2,0.4,0.6,0.8`)
 - `-n` or `--num_runs`: Set the number of runs for each fraction (e.g., `-n 5`)
-- `-c` or `--cutoff`: Set the cutoff distance for neighbor lists (e.g., `-c 5.0`)
-- `-k` or `--nbrs`: Set the number of neighbors for the descriptor (e.g., `-k 32`)
 - `-b` or `--bandwidth`: Set the bandwidth for entropy calculation (e.g., `-b 0.015`)
 
-For example, a more customized command might look like this:
+A more customized command might look like this:
 
 ```bash
 quests learning_curve dataset.xyz -f 0.2,0.4,0.6,0.8 -n 5 -c 5.0 -k 32 -b 0.015 -o custom_learning_curve.json
