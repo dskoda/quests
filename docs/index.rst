@@ -1,16 +1,23 @@
-.. QUESTS documentation master file, created by
-   sphinx-quickstart on Sat Apr  6 11:56:17 2024.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Welcome to QUESTS's documentation!
 ==================================
+
+QUESTS (QUantum Entropy Sampling Techniques for Structures) is a Python package for computing configurational entropy of materials using quantum mechanical simulations.
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
+   installation
+   quickstart
+   tutorials/index
+   api/index
 
+API Reference
+=============
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
 
 Indices and tables
 ==================

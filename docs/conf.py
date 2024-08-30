@@ -55,3 +55,45 @@ html_theme = "furo"
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
+
+# HTML theme options
+html_theme_options = {
+    "sidebar_hide_name": False,
+    "navigation_with_keys": True,
+    "announcement": "This is a beta version of the documentation.",
+    "light_css_variables": {
+        "color-brand-primary": "#336790",
+        "color-brand-content": "#336790",
+    },
+    "dark_css_variables": {
+        "color-brand-primary": "#336790",
+        "color-brand-content": "#336790",
+    },
+}
+
+# Sidebar customization
+html_sidebars = {
+    "**": [
+        "sidebar/brand.html",
+        "sidebar/search.html",
+        "sidebar/scroll-start.html",
+        "sidebar/navigation.html",
+        "sidebar/ethical-ads.html",
+        "sidebar/scroll-end.html",
+    ]
+}
+
+# Custom sidebar contents
+html_additional_pages = {
+    'sidebar': 'sidebar.html'
+}
+
+# Rename "Module Index" to "API Reference"
+html_domain_indices = False
+html_use_modindex = False
+html_use_index = True
+html_copy_source = False
+html_show_sourcelink = False
+html_show_sphinx = False
+html_show_copyright = True
+html_use_opensearch = 'https://quests.readthedocs.io'
