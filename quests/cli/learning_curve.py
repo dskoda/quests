@@ -22,9 +22,6 @@ from quests.tools.time import Timer
 from .load_file import descriptors_from_file
 from .log import format_time, logger
 
-from .load_file import descriptors_from_file
-from .log import format_time, logger
-
 
 def sample_indices(size: int, n: int):
     if size < n:
@@ -33,16 +30,17 @@ def sample_indices(size: int, n: int):
     return np.random.randint(0, size, n)
 
 
-def get_sampling_fn(x: np.ndarray, sample):
+def get_sampling_fn(x: np.ndarray, fraction):
     # sample environments
     def sample_items():
-        indices = sample_indices(len(x), sample)
+        sample_size = int(len(x) * fraction)
+        indices = sample_indices(len(x), sample_size)
         return x[indices]
 
     return sample_items
 
 
-@click.command("entropy_sampler")
+@click.command("learning_curve")
 @click.argument("file", required=1)
 @click.option(
     "-c",
@@ -66,25 +64,18 @@ def get_sampling_fn(x: np.ndarray, sample):
     help=f"Bandwidth when computing the kernel (default: {DEFAULT_BANDWIDTH})",
 )
 @click.option(
-    "--estimate_bw",
-    is_flag=True,
-    default=False,
-    help="If True, estimates the bandwidth based on the density",
-)
-@click.option(
-    "-s",
-    "--sample",
-    type=int,
-    default=1000,
-    help="If given, takes a sample of the environments before computing \
-            its entropy (default: uses the entire dataset)",
+    "-f",
+    "--fractions",
+    type=str,
+    default="0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9",
+    help="Comma-separated list of dataset fractions to sample (default: 0.1 to 0.9 every 0.1)",
 )
 @click.option(
     "-n",
     "--num_runs",
     type=int,
-    default=20,
-    help="Number of runs to resample (default: 20)",
+    default=3,
+    help="Number of runs to resample for each fraction (default: 3)",
 )
 @click.option(
     "-j",
@@ -113,13 +104,12 @@ def get_sampling_fn(x: np.ndarray, sample):
     default=False,
     help="If True, overwrite the output file",
 )
-def entropy_sampler(
+def learning_curve(
     file,
     cutoff,
     nbrs,
     bandwidth,
-    estimate_bw,
-    sample,
+    fractions,
     num_runs,
     jobs,
     batch_size,
@@ -135,50 +125,59 @@ def entropy_sampler(
 
     x, descriptor_time = descriptors_from_file(file, k=nbrs, cutoff=cutoff)
 
-    if estimate_bw:
-        dset = read(file, index=":")
-        volume = np.mean([at.get_volume() / len(at) for at in dset])
-        bandwidth = get_bandwidth(volume)
+    fractions = [float(f) for f in fractions.split(",")]
 
-    # if dataset is smaller than sample, no need to
-    # run multiple times
-    if len(x) <= sample:
-        num_runs = 1
+    results = {
+        "file": file,
+        "n_envs": x.shape[0],
+        "k": nbrs,
+        "cutoff": cutoff,
+        "bandwidth": bandwidth,
+        "jobs": jobs,
+        "fractions": fractions,
+        "num_runs": num_runs,
+        "descriptor_time": descriptor_time,
+        "learning_curve": [],
+    }
 
-    # determine how the dataset is going to be sampled
-    sample_items = get_sampling_fn(x, sample)
+    for fraction in fractions:
+        logger(f"Computing entropy for fraction: {fraction}")
 
-    # compute the entropy `num_runs` times
-    entropies = []
-    entropies_times = []
-    for n in range(num_runs):
-        xsample = sample_items()
-        with Timer() as t:
-            entropy = perfect_entropy(xsample, h=bandwidth, batch_size=batch_size)
-        entropy_time = t.time
+        # determine how the dataset is going to be sampled
+        sample_items = get_sampling_fn(x, fraction)
 
-        entropies.append(float(entropy))
-        entropies_times.append(entropy_time)
+        # compute the entropy `num_runs` times
+        entropies = []
+        entropies_times = []
+        for n in range(num_runs):
+            xsample = sample_items()
+            with Timer() as t:
+                entropy = perfect_entropy(xsample, h=bandwidth, batch_size=batch_size)
+            entropy_time = t.time
 
-    logger(f"Entropy: {np.mean(entropies): .3f} ± {np.std(entropies): .3f} (nats)")
-    logger(f"computed from {num_runs} runs.")
-    logger(f"Max theoretical entropy: {np.log(xsample.shape[0]): .3f} (nats)")
+            entropies.append(float(entropy))
+            entropies_times.append(entropy_time)
+
+        mean_entropy = np.mean(entropies)
+        std_entropy = np.std(entropies)
+
+        logger(f"Entropy: {mean_entropy:.3f} ± {std_entropy:.3f} (nats)")
+        logger(f"computed from {num_runs} runs.")
+        logger(f"Max theoretical entropy: {np.log(len(xsample)):.3f} (nats)")
+
+        results["learning_curve"].append(
+            {
+                "fraction": fraction,
+                "entropies": entropies,
+                "entropies_times": entropies_times,
+                "mean_entropy": mean_entropy,
+                "std_entropy": std_entropy,
+            }
+        )
 
     # log the results
     if output is not None:
-        results = {
-            "file": file,
-            "n_envs": x.shape[0],
-            "k": nbrs,
-            "cutoff": cutoff,
-            "bandwidth": bandwidth,
-            "jobs": jobs,
-            "sample": sample,
-            "num_runs": num_runs,
-            "entropies": entropies,
-            "descriptor_time": descriptor_time,
-            "entropies_times": entropies_times,
-        }
-
         with open(output, "w") as f:
             json.dump(results, f, indent=4)
+
+    logger("Learning curve computation completed.")

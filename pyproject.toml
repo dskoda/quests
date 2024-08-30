@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "quests"
-version = "0.1.0"
+version = "2024.06.21"
 description = "Quick Uncertainty and Entropy from STructural Similarity"
-authors = [{name = "Daniel Schwalbe-Koda", email = "dskoda@llnl.gov"}]
+authors = [{name = "Daniel Schwalbe-Koda", email = "dskoda@ucla.edu"}]
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.8"
@@ -23,10 +23,10 @@ dependencies = [
 
 [project.scripts]
 quests = "quests.cli.quests:quests"
-quests_flex = "quests.cli.quests_flex:quests_flex"
 
 [tool.setuptools]
 packages = ["quests"]
 
 [project.optional-dependencies]
 docs = ["sphinx"]
+gpu = ["torch", "torchvision"]

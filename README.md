@@ -1,16 +1,22 @@
-# QUESTS: Quick Uncertainty and Entropy from STructural Similarity
+# QUESTS: Quick Uncertainty and Entropy via STructural Similarity
 
 QUESTS provides model-free uncertainty and entropy estimation methods for interatomic potentials.
-Among the methods, we propose a structural descriptor based on k-nearest neighbors that is:
+Among the methods, we propose a structural descriptor based on k-nearest neighbors that:
 
-1. Fast to compute, as it uses only distances between atoms within an environment.
-Because the descriptors are parallelized, generation of descriptors for 1.5M environments takes about 3 seconds on a 56-core computer.
-2. Interpretable, as the distances correspond to directly to displacements of atoms.
-3. Lead to an interpretable information entropy value.
+1. Is fast to compute, as it uses only distances between atoms within an environment.
+Because the computation of descriptors is efficiently parallelized, generation of descriptors for 1.5M environments takes about 3 seconds on 56 threads (tested against Intel Xeon CLX-8276L CPUs).
+2. Can be used to analyze datasets for atomistic machine learning, providing quantities such as dataset entropy, diversity, information gap, and others.
+3. Is shown to recover many useful properties of information theory, and can be used to inform dataset compression
 
-This package also contains metrics to quantify the diversity of a dataset using this descriptor, and tools to interface with other representations and packages.
+This package also contains tools to interface with other representations and packages.
 
 ## Installation
+
+### From pip
+
+```bash
+pip install quests
+```
 
 ### From repository
 
@@ -103,6 +109,99 @@ y = get_descriptors(dset_y, k=k, cutoff=cutoff)
 dH = approx_delta_entropy(y, x, h=0.015, n=5, graph_neighbors=10)
 ```
 
+#### Computing the dataset entropy using PyTorch
+
+To accelerate the computation of entropy of datasets, one can use PyTorch to compute the entropy of a system.
+This can be done by first installing the optional dependencies for this repository:
+
+```bash
+pip install quests[gpu]
+```
+
+The syntax of the entropy, as computed with PyTorch, is identical to the one above.
+Instead of loading the functions from [quests.entropy](quests/entropy.py), however, you should load them from [quests.gpu.entropy](quests/gpu/entropy.py).
+The descriptors remain the same - as of now, creating descriptors using GPUs is not supported.
+Note that this constraint requires the descriptors to be generated using the traditional routes, and later converted into a `torch.tensor`.
+
+```python
+import torch
+from ase.io import read
+from quests.descriptor import get_descriptors
+from quests.gpu.entropy import perfect_entropy
+
+dset = read("dataset.xyz", index=":")
+x = get_descriptors(dset, k=32, cutoff=5.0)
+x = torch.tensor(x, device="cuda")
+h = 0.015
+batch_size = 10000
+H = perfect_entropy(x, h=h, batch_size=batch_size)
+```
+
+#### Computing overlap between datasets
+
+To compute the overlap between two datasets, you can use the `overlap` command-line interface or the API:
+
+```bash
+quests overlap test.xyz ref.xyz -o results.json
+```
+
+This command will compute the overlap between the environments in test.xyz and ref.xyz, and save the results to results.json.
+
+Using the API:
+
+```python
+from ase.io import read
+from quests.descriptor import get_descriptors
+from quests.entropy import delta_entropy
+
+test = read("test.xyz", index=":")
+ref = read("ref.xyz", index=":")
+
+k, cutoff = 32, 5.0
+x1 = get_descriptors(test, k=k, cutoff=cutoff)
+x2 = get_descriptors(ref, k=k, cutoff=cutoff)
+
+h = 0.015  # bandwidth
+eps = 1e-5  # threshold for overlap
+delta = delta_entropy(x1, x2, h=h)
+overlap = (delta < eps).mean()
+
+print(f"Overlap value: {overlap:.4f}")
+```
+
+This example computes the overlap between two datasets using a bandwidth of 0.015 and an overlap threshold of 1e-3. The overlap is defined as the fraction of environments where the delta entropy is below the threshold.
+
+#### Obtaining a Learning Curve
+
+To generate a learning curve using the command line interface, you can use the `learning_curve` command.
+This command computes the entropy at different dataset fractions, allowing you to see how the entropy changes as you include more data:
+
+```bash
+quests learning_curve dataset.xyz -o learning_curve_results.json
+```
+
+This command will:
+1. Use the default fractions (0.1 to 0.9 in steps of 0.1)
+2. Compute the entropy for each fraction
+3. Run the computation 3 times for each fraction (default value)
+4. Save the results in a JSON file named `learning_curve_results.json`
+
+You can customize the command with various options:
+
+- `-f` or `--fractions`: Specify custom fractions (e.g., `-f 0.2,0.4,0.6,0.8`)
+- `-n` or `--num_runs`: Set the number of runs for each fraction (e.g., `-n 5`)
+- `-b` or `--bandwidth`: Set the bandwidth for entropy calculation (e.g., `-b 0.015`)
+
+A more customized command might look like this:
+
+```bash
+quests learning_curve dataset.xyz -f 0.2,0.4,0.6,0.8 -n 5 -c 5.0 -k 32 -b 0.015 -o custom_learning_curve.json
+```
+
+This will compute the learning curve for fractions 0.2, 0.4, 0.6, and 0.8, running each fraction 5 times, with a cutoff of 5.0 Å, 32 neighbors, and a bandwidth of 0.015.
+
+The resulting JSON file will contain detailed information about the learning curve, including the entropy values for each fraction and run, as well as the mean and standard deviation of the entropy for each fraction.
+
 ### Citing
 
 If you use QUESTS in a publication, please cite the following paper:
@@ -112,10 +211,8 @@ If you use QUESTS in a publication, please cite the following paper:
     title = {Information theory unifies atomistic machine learning, uncertainty quantification, and materials thermodynamics},
     author = {Schwalbe-Koda, Daniel and Hamel, Sebastien and Sadigh, Babak and Zhou, Fei and Lordi, Vincenzo},
     year = {2024},
-    journal = {arXiv:},
-    doi = {},
-    url = {},
-    arxiv={},
+    journal = {arXiv:2404.12367},
+    url = {https://arxiv.org/abs/2404.12367},
 }
 ```
 ## License
@@ -128,6 +225,6 @@ SPDX: BSD-3-Clause
 
 ## Acknowledgements
 
-This work was produced under the auspices of the U.S. Department of Energy by Lawrence Livermore National Laboratory under Contract DE-AC52-07NA27344, with support from LLNL's LDRD program under tracking codes 22-ERD-055 and 23-SI-006.
+This work was initially produced under the auspices of the U.S. Department of Energy by Lawrence Livermore National Laboratory under Contract DE-AC52-07NA27344, with support from LLNL's LDRD program under tracking codes 22-ERD-055 and 23-SI-006.
 
 Code released as LLNL-CODE-858914

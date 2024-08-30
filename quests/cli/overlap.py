@@ -17,9 +17,9 @@ from .load_file import descriptors_from_file
 from .log import format_time, logger
 
 
-@click.command("dH")
-@click.argument("test", required=1)
-@click.argument("reference", required=1)
+@click.command("overlap")
+@click.argument("test_set", required=1)
+@click.argument("reference_set", required=1)
 @click.option(
     "-c",
     "--cutoff",
@@ -55,12 +55,18 @@ from .log import format_time, logger
     help=f"Size of the batches when computing the distances (default: {DEFAULT_BATCH})",
 )
 @click.option(
+    "-e",
+    "--eps",
+    type=float,
+    default=1e-5,
+    help="Threshold for considering environments as overlapping (default: 1e-3)",
+)
+@click.option(
     "-o",
     "--output",
     type=str,
     default=None,
-    help="path to the json file that will contain the output\
-            (default: no output produced)",
+    help="path to the json file that will contain the output (default: no output produced)",
 )
 @click.option(
     "--overwrite",
@@ -68,14 +74,15 @@ from .log import format_time, logger
     default=False,
     help="If True, overwrite the output file",
 )
-def dH(
-    test,
-    reference,
+def overlap(
+    test_set,
+    reference_set,
     cutoff,
     nbrs,
     bandwidth,
     jobs,
     batch_size,
+    eps,
     output,
     overwrite,
 ):
@@ -86,41 +93,35 @@ def dH(
     if jobs is not None:
         nb.set_num_threads(jobs)
 
-    x, _ = descriptors_from_file(test, nbrs, cutoff)
-    ref, _ = descriptors_from_file(reference, nbrs, cutoff)
+    xt, _ = descriptors_from_file(test_set, nbrs, cutoff)
+    xr, _ = descriptors_from_file(reference_set, nbrs, cutoff)
 
-    logger("Computing dH...")
+    logger("Computing overlap...")
     with Timer() as t:
-        delta = delta_entropy(x, ref, h=bandwidth, batch_size=batch_size)
-    entropy_time = t.time
-    logger(f"dH computed in: {format_time(entropy_time)}")
+        delta = delta_entropy(xt, xr, h=bandwidth, batch_size=batch_size)
+        overlap_value = (delta < eps).mean()
+    overlap_time = t.time
+    logger(f"Overlap computed in: {format_time(overlap_time)}")
+    logger(f"Overlap value: {overlap_value:.4f}")
 
     if output is None:
         sys.exit()
 
-    if output.endswith(".xyz"):
-        dset = read(test, index=":")
-        i = 0
-        for atoms in dset:
-            n = len(atoms)
-            _dH = delta[i : i + n]
-            atoms.set_array("dH", _dH)
-            i += n
-
-        write(output, dset, format="extxyz")
-        sys.exit()
-
     results = {
-        "reference_file": reference,
-        "test_file": test,
-        "test_envs": x.shape[0],
-        "ref_envs": ref.shape[0],
+        "test_file": test_set,
+        "reference_file": reference_set,
+        "test_envs": xt.shape[0],
+        "reference_envs": xr.shape[0],
         "k": nbrs,
         "cutoff": cutoff,
         "bandwidth": bandwidth,
         "jobs": jobs,
-        "delta_entropy": list(delta.astype(float)),
+        "eps": eps,
+        "overlap": float(overlap_value),
+        "computation_time": overlap_time,
     }
 
     with open(output, "w") as f:
         json.dump(results, f, indent=4)
+
+    logger(f"Results written to {output}")
