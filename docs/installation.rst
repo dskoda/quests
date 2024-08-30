@@ -11,7 +11,7 @@ For the latest development version, you can install directly from the GitHub rep
 
 .. code-block:: bash
 
-    pip install git+https://github.com/dschsam/quests.git
+    pip install git+https://github.com/dskoda/quests.git
 
 Requirements
 ------------
