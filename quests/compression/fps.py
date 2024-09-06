@@ -42,6 +42,7 @@ def fps(
 
     # now, we sample the dataset until convergence
     matrix = []
+    size = len(descriptors) if size >= len(descriptors) else size
     while len(compressed) < size:
         # computes the distances towards the latest sampled configuration
         x = descriptors[next_i]

@@ -33,7 +33,7 @@ def k_means(
     for num in range(kmeans.labels_.max()):
         if sum(kmeans.labels_ == num) != 0:
             selected.append(np.random.choice(np.where(kmeans.labels_ == num)[0]))
-    return selected                
+    return selected        
 
 # TODO: Ben, please implement
 # https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html#sklearn.cluster.DBSCAN

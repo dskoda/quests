@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Callable, List, Tuple
 
 import numpy as np
@@ -5,6 +6,7 @@ from ase import Atoms
 from bayes_opt import BayesianOptimization
 from quests.descriptor import get_descriptors
 from quests.entropy import DEFAULT_BANDWIDTH, DEFAULT_BATCH, diversity, perfect_entropy
+import ray 
 
 from .fps import fps
 
@@ -95,8 +97,57 @@ class DatasetCompressor:
         opt.maximize(init_points=init_points, n_iter=n_iter)
         optimal_frac = opt.max["params"]["frac"]
 
-        return self.fixed_compression(method, optimal_frac)
+        return self.fixed_compression(method, optimal_frac), optimal_frac
 
     def get_indices(self, method: str, size: int, **kwargs):
         self._check_compression_method(method)
         return fps(self._descriptors, self._entropies, size, method=method)
+    
+    def segment_compress(self,
+        num_sample: int,
+        num_chunks: int
+    ):
+        
+        ray.init(ignore_reinit_error=True)
+
+        result = self.process_dataset(
+            self._descriptors,
+            self._entropies,
+            num_chunks=num_chunks,
+            num_sample=num_sample,
+        )
+        
+        ray.shutdown()
+        
+        return result
+    
+    def process_dataset(
+        self, x: np.ndarray, initial_entropies: np.ndarray, num_chunks: int, num_sample: int):
+        
+        N = len(x)
+
+        if N <= num_sample:
+            return np.arange(N)
+
+        if N <= num_chunks * num_sample:
+            return fps(x, initial_entropies, size = num_sample, method='msc')
+
+        chunk_size = num_chunks * num_sample
+        num_subsets = int(np.ceil(N / chunk_size))
+        
+        start_indexes = [i*chunk_size for i in range(num_subsets)]
+        result_ids = [self.get_chunk_indexes.remote(self, start = start, x = x, initial_entropies = initial_entropies, 
+                                                    chunk_size = chunk_size, num_sample = num_sample) for start in start_indexes]
+        results = ray.get(result_ids)
+        y = np.concatenate(results)
+        result = []
+        for ind in y:
+            result.append(x[ind])
+        i = self.process_dataset(result, initial_entropies[y], num_chunks, num_sample)
+        return y[i]
+    
+    @ray.remote
+    def get_chunk_indexes(self, start: int, x: np.ndarray, initial_entropies: np.ndarray, chunk_size: int, num_sample: int):
+        chunk = x[start : start + chunk_size]
+        initial_entropies_chunk = initial_entropies[start : start + chunk_size]
+        return start + np.array(fps(chunk, initial_entropies_chunk, size = num_sample, method = 'msc'))
