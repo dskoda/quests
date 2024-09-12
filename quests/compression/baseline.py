@@ -29,6 +29,8 @@ def mean_fps(
         current_point = avg_descriptors[sampled_indices[-1]]
         dist_to_current_point = np.linalg.norm(avg_descriptors - current_point, axis=1)
         min_distances = np.minimum(min_distances, dist_to_current_point)
+        for num in sampled_indices:
+            min_distances[num] = -np.inf
         farthest_point_idx = np.argmax(min_distances)
         sampled_indices.append(farthest_point_idx)
 
