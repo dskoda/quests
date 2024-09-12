@@ -20,8 +20,7 @@ def mean_fps(
     avg_descriptors = np.array([x.mean(0) for x in descriptors])
     n_points, n_dim = avg_descriptors.shape
 
-    if (start_idx is None) or (start_idx < 0):
-        start_idx = np.random.randint(0, n_points)
+    start_idx = np.random.randint(0, n_points)
 
     sampled_indices = [start_idx]
     min_distances = np.full(n_points, np.inf)
