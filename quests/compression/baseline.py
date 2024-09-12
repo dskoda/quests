@@ -16,11 +16,24 @@ def random_sample(
 def mean_fps(
     descriptors: List[np.ndarray], entropies: np.ndarray, size: int
 ) -> List[int]:
-    import fpsample
 
     avg_descriptors = np.array([x.mean(0) for x in descriptors])
-    selected = fpsample.fps_sampling(avg_descriptors, size)
-    return selected
+    n_points, n_dim = avg_descriptors.shape
+
+    if (start_idx is None) or (start_idx < 0):
+        start_idx = np.random.randint(0, n_points)
+
+    sampled_indices = [start_idx]
+    min_distances = np.full(n_points, np.inf)
+    
+    for _ in range(size - 1):
+        current_point = avg_descriptors[sampled_indices[-1]]
+        dist_to_current_point = np.linalg.norm(avg_descriptors - current_point, axis=1)
+        min_distances = np.minimum(min_distances, dist_to_current_point)
+        farthest_point_idx = np.argmax(min_distances)
+        sampled_indices.append(farthest_point_idx)
+
+    return np.array(sampled_indices)
 
 def k_means(
     descriptors: List[np.ndarray], entropies: np.ndarray, size: int
