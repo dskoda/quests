@@ -34,7 +34,7 @@ def mean_fps(
         farthest_point_idx = np.argmax(min_distances)
         sampled_indices.append(farthest_point_idx)
 
-    return np.array(sampled_indices)
+    return sampled_indices
 
 def k_means(
     descriptors: List[np.ndarray], entropies: np.ndarray, size: int
