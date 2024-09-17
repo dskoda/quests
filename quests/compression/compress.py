@@ -109,18 +109,29 @@ class DatasetCompressor:
     ):
         
         ray.init(ignore_reinit_error=True)
-
-        result = self.process_dataset(
-            self._descriptors,
-            self._entropies,
+        
+        chunk_size = int(np.ceil(len(self._descriptors) / num_chunks))
+        
+        start_indexes = [i*chunk_size for i in range(num_chunks)]
+        sample_mini_size = [num_sample//num_chunks]*(num_chunks-1)
+        last_val = num_sample%num_chunks if num_sample%num_chunks != 0 else num_sample//num_chunks
+        sample_mini_size.append(last_val)
+        result_ids = [self.process_dataset.remote(self, self._descriptors[start:start+chunk_size],
+            self._entropies[start:start+chunk_size],
             num_chunks=num_chunks,
-            num_sample=num_sample,
-        )
+            num_sample=mini_sample) for start, mini_sample in zip(start_indexes, sample_mini_size)]
+        
+        results = ray.get(result_ids)
         
         ray.shutdown()
+
+        y = []
+        for i in range(len(results)):
+            y = np.concatenate([y, np.array(results[i]) + start_indexes[i]])
         
-        return result
+        return y
     
+    @ray.remote
     def process_dataset(
         self, x: np.ndarray, initial_entropies: np.ndarray, num_chunks: int, num_sample: int):
         
@@ -135,19 +146,21 @@ class DatasetCompressor:
         chunk_size = num_chunks * num_sample
         num_subsets = int(np.ceil(N / chunk_size))
         
-        start_indexes = [i*chunk_size for i in range(num_subsets)]
-        result_ids = [self.get_chunk_indexes.remote(self, start = start, x = x, initial_entropies = initial_entropies, 
-                                                    chunk_size = chunk_size, num_sample = num_sample) for start in start_indexes]
-        results = ray.get(result_ids)
-        y = np.concatenate(results)
+        y = []
+        for i in range(num_subsets):
+            start = i * chunk_size
+            chunk = x[start : start + chunk_size]
+            initial_entropies_chunk = initial_entropies[start : start + chunk_size]
+            y.append(
+                start
+                + np.array(
+                    fps(chunk, initial_entropies_chunk, size = num_sample, method = 'msc')
+                )
+            )
+        
+        y = np.concatenate(y)
         result = []
         for ind in y:
             result.append(x[ind])
-        i = self.process_dataset(result, initial_entropies[y], num_chunks, num_sample)
-        return y[i]
-    
-    @ray.remote
-    def get_chunk_indexes(self, start: int, x: np.ndarray, initial_entropies: np.ndarray, chunk_size: int, num_sample: int):
-        chunk = x[start : start + chunk_size]
-        initial_entropies_chunk = initial_entropies[start : start + chunk_size]
-        return start + np.array(fps(chunk, initial_entropies_chunk, size = num_sample, method = 'msc'))
+        i = np.array(self.process_dataset.remote(self, result, initial_entropies[y], num_chunks, num_sample))
+        return y[ray.get(i)]
