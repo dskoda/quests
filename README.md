@@ -208,7 +208,7 @@ If you use QUESTS in a publication, please cite the following paper:
 
 ```bibtex
 @article{schwalbekoda2024information,
-    title = {Information theory unifies atomistic machine learning, uncertainty quantification, and materials thermodynamics},
+    title = {Model-free quantification of completeness, uncertainties, and outliers in atomistic machine learning using information theory},
     author = {Schwalbe-Koda, Daniel and Hamel, Sebastien and Sadigh, Babak and Zhou, Fei and Lordi, Vincenzo},
     year = {2024},
     journal = {arXiv:2404.12367},
