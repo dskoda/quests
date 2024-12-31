@@ -36,9 +36,9 @@ from .log import format_time, logger
 )
 @click.option(
     "-t",
-    "--target_dH",
+    "--target",
     type=int,
-    default=DEFAULTT_TARGET,
+    default=DEFAULT_TARGET,
     help=f"Target dH for the generation of new structures (default: {DEFAULT_TARGET:.0f})",
 )
 @click.option(
@@ -89,11 +89,17 @@ from .log import format_time, logger
     default=False,
     help="If True, overwrite the output file",
 )
+@click.option(
+    "--compare",
+    is_flag=True,
+    default=False,
+    help="If True, create an output file that compares the initial and final structures",
+)
 def mcmc(
     reference,
     index,
     n_steps,
-    target_dH,
+    target,
     cutoff,
     nbrs,
     bandwidth,
@@ -101,6 +107,7 @@ def mcmc(
     batch_size,
     output,
     overwrite,
+    compare,
 ):
     if output is not None and os.path.exists(output) and not overwrite:
         logger(f"Output file {output} exists. Aborting...")
@@ -121,7 +128,7 @@ def mcmc(
     logger("Sampling new structure")
     with Timer() as t:
         best, res = augment_pbc(
-            at, dset, n_steps=n_steps, target_dH=target_dH, k=nbrs, cutoff=cutoff
+            at, dset, n_steps=n_steps, target_dH=target, k=nbrs, cutoff=cutoff
         )
     entropy_time = t.time
     logger(f"Structure sampled in: {format_time(entropy_time)}")
@@ -129,6 +136,8 @@ def mcmc(
     if output is None:
         sys.exit()
 
+    # exports the structure
+    out = [at, best] if compare else best
     if output.endswith(".xyz"):
-        write(output, best, format="extxyz")
+        write(output, out, format="extxyz")
         sys.exit()
