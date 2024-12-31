@@ -141,6 +141,7 @@ def active_learning(
                     k=nbrs,
                     cutoff=cutoff,
                 )
+                best.info["gen"] = gen + 1
                 new.append(best)
 
         gen_time = t.time
