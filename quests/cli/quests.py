@@ -9,6 +9,7 @@ from quests.cli.make_descriptors import make_descriptors
 from quests.cli.overlap import overlap
 from quests.cli.learning_curve import learning_curve
 from quests.cli.mcmc import mcmc
+from quests.cli.active_learning import active_learning
 
 
 class QuestsGroup(click.Group):
@@ -29,6 +30,7 @@ quests.add_command(bandwidth)
 quests.add_command(overlap)
 quests.add_command(learning_curve)
 quests.add_command(mcmc)
+quests.add_command(active_learning)
 
 
 if __name__ == "__main__":
