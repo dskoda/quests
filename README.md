@@ -28,6 +28,8 @@ cd quests
 pip install .
 ```
 
+Typical installation times are on the order of a minute, and depend mostly on the internet connection to download the dependencies and on conflict resolution by the package manager (if applicable).
+
 ## Usage
 
 ### Command line
@@ -207,6 +209,9 @@ The resulting JSON file will contain detailed information about the learning cur
 One example demonstrating the use of QUESTS for computing the entropy of the Carbon GAP-20 dataset is provided under the folder `examples`.
 The script automatically downloads the dataset and shows how to compute the entropy.
 Please run this script only after following the installation instructions.
+
+This first example reproduces the first part of Fig. 2c of the manuscript.
+Computing the entropies takes a few minutes on a MacBook Pro M3 with 16 threads (default used by numba).
 
 ### Citing
 
