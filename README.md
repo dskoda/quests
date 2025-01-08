@@ -202,6 +202,12 @@ This will compute the learning curve for fractions 0.2, 0.4, 0.6, and 0.8, runni
 
 The resulting JSON file will contain detailed information about the learning curve, including the entropy values for each fraction and run, as well as the mean and standard deviation of the entropy for each fraction.
 
+### Demonstration
+
+One example demonstrating the use of QUESTS for computing the entropy of the Carbon GAP-20 dataset is provided under the folder `examples`.
+The script automatically downloads the dataset and shows how to compute the entropy.
+Please run this script only after following the installation instructions.
+
 ### Citing
 
 If you use QUESTS in a publication, please cite the following paper:
