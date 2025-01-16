@@ -4,22 +4,26 @@ from ase.neighborlist import neighbor_list
 
 
 def extract_environment(atoms: Atoms, idx: int, cutoff: float, k: int) -> Atoms:
-    """Extracts the k-nearest neighbors of the given Atoms
-    and returns another Atoms object without periodic
-    boundary conditions. This is useful for visualization
-    purposes.
+    """
+    Extracts the k-nearest neighbors of the given Atoms and returns another Atoms object without periodic boundary conditions.
 
-    Arguments:
+    This function is useful for visualization purposes.
+
+    Parameters
     ----------
-        atoms (Atoms): structure to be analyzed.
-        idx (int): index of the environment to be isolated.
-        cutoff (float): cutoff to consider when searching for
-            nearest neighbors.
-        k (int): number of nearest neighbors
+    atoms : Atoms
+        Structure to be analyzed.
+    idx : int
+        Index of the environment to be isolated.
+    cutoff : float
+        Cutoff to consider when searching for nearest neighbors.
+    k : int
+        Number of nearest neighbors.
 
-    Returns:
-    --------
-        env (Atoms): isolated environment of `atoms[idx]`
+    Returns
+    -------
+    Atoms
+        Isolated environment of `atoms[idx]`.
     """
     i, j, d, D = neighbor_list("ijdD", atoms, cutoff=cutoff)
 
@@ -40,20 +44,23 @@ def extract_environment(atoms: Atoms, idx: int, cutoff: float, k: int) -> Atoms:
     )
 
 
-def estimate_neighbors(density: float, cutoff: float, molar_mass: float):
-    """Estimate how many neighbors are expected to be within
-        a given cutoff from the density of the material.
+def estimate_neighbors(density: float, cutoff: float, molar_mass: float) -> float:
+    """
+    Estimate how many neighbors are expected to be within a given cutoff from the density of the material.
 
-    Arguments:
+    Parameters
     ----------
-        density (float): density of the material in g/cm3
-        cutoff (float): radius of the shell to be considered
-        molar_mass (float): molar mass of the material per formula unit
-            in g/mol.
+    density : float
+        Density of the material in g/cm3.
+    cutoff : float
+        Radius of the shell to be considered.
+    molar_mass : float
+        Molar mass of the material per formula unit in g/mol.
 
-    Returns:
-    --------
-        neighbors (float): average number of neighbors
+    Returns
+    -------
+    float
+        Average number of neighbors.
     """
     # 1 mol = 6.02E23 atoms
     # 1 cm^3 = 1E24 Å^3

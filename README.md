@@ -5,10 +5,10 @@ Among the methods, we propose a structural descriptor based on k-nearest neighbo
 
 1. Is fast to compute, as it uses only distances between atoms within an environment.
 Because the computation of descriptors is efficiently parallelized, generation of descriptors for 1.5M environments takes about 3 seconds on 56 threads (tested against Intel Xeon CLX-8276L CPUs).
-2. Can be used to generate distributions and, in combination with information theory, gives rise to entropy values.
-3. Is shown to recover thermodynamic quantities, order parameters, and many useful properties of information theory.
+2. Can be used to analyze datasets for atomistic machine learning, providing quantities such as dataset entropy, diversity, information gap, and others.
+3. Is shown to recover many useful properties of information theory, and can be used to inform dataset compression
 
-This package also contains metrics to quantify the diversity of a dataset using this descriptor, and tools to interface with other representations and packages.
+This package also contains tools to interface with other representations and packages.
 
 ## Installation
 
@@ -27,6 +27,8 @@ git clone https://github.com/dskoda/quests.git
 cd quests
 pip install .
 ```
+
+Typical installation times are on the order of a minute, and depend mostly on the internet connection to download the dependencies and on conflict resolution by the package manager (if applicable).
 
 ## Usage
 
@@ -137,13 +139,87 @@ batch_size = 10000
 H = perfect_entropy(x, h=h, batch_size=batch_size)
 ```
 
+#### Computing overlap between datasets
+
+To compute the overlap between two datasets, you can use the `overlap` command-line interface or the API:
+
+```bash
+quests overlap test.xyz ref.xyz -o results.json
+```
+
+This command will compute the overlap between the environments in test.xyz and ref.xyz, and save the results to results.json.
+
+Using the API:
+
+```python
+from ase.io import read
+from quests.descriptor import get_descriptors
+from quests.entropy import delta_entropy
+
+test = read("test.xyz", index=":")
+ref = read("ref.xyz", index=":")
+
+k, cutoff = 32, 5.0
+x1 = get_descriptors(test, k=k, cutoff=cutoff)
+x2 = get_descriptors(ref, k=k, cutoff=cutoff)
+
+h = 0.015  # bandwidth
+eps = 1e-5  # threshold for overlap
+delta = delta_entropy(x1, x2, h=h)
+overlap = (delta < eps).mean()
+
+print(f"Overlap value: {overlap:.4f}")
+```
+
+This example computes the overlap between two datasets using a bandwidth of 0.015 and an overlap threshold of 1e-3. The overlap is defined as the fraction of environments where the delta entropy is below the threshold.
+
+#### Obtaining a Learning Curve
+
+To generate a learning curve using the command line interface, you can use the `learning_curve` command.
+This command computes the entropy at different dataset fractions, allowing you to see how the entropy changes as you include more data:
+
+```bash
+quests learning_curve dataset.xyz -o learning_curve_results.json
+```
+
+This command will:
+1. Use the default fractions (0.1 to 0.9 in steps of 0.1)
+2. Compute the entropy for each fraction
+3. Run the computation 3 times for each fraction (default value)
+4. Save the results in a JSON file named `learning_curve_results.json`
+
+You can customize the command with various options:
+
+- `-f` or `--fractions`: Specify custom fractions (e.g., `-f 0.2,0.4,0.6,0.8`)
+- `-n` or `--num_runs`: Set the number of runs for each fraction (e.g., `-n 5`)
+- `-b` or `--bandwidth`: Set the bandwidth for entropy calculation (e.g., `-b 0.015`)
+
+A more customized command might look like this:
+
+```bash
+quests learning_curve dataset.xyz -f 0.2,0.4,0.6,0.8 -n 5 -c 5.0 -k 32 -b 0.015 -o custom_learning_curve.json
+```
+
+This will compute the learning curve for fractions 0.2, 0.4, 0.6, and 0.8, running each fraction 5 times, with a cutoff of 5.0 Å, 32 neighbors, and a bandwidth of 0.015.
+
+The resulting JSON file will contain detailed information about the learning curve, including the entropy values for each fraction and run, as well as the mean and standard deviation of the entropy for each fraction.
+
+### Demonstration
+
+One example demonstrating the use of QUESTS for computing the entropy of the Carbon GAP-20 dataset is provided under the folder `examples`.
+The script automatically downloads the dataset and shows how to compute the entropy.
+Please run this script only after following the installation instructions.
+
+This first example reproduces the first part of Fig. 2c of the manuscript.
+Computing the entropies takes a few minutes on a MacBook Pro M3 with 16 threads (default used by numba).
+
 ### Citing
 
 If you use QUESTS in a publication, please cite the following paper:
 
 ```bibtex
 @article{schwalbekoda2024information,
-    title = {Information theory unifies atomistic machine learning, uncertainty quantification, and materials thermodynamics},
+    title = {Model-free quantification of completeness, uncertainties, and outliers in atomistic machine learning using information theory},
     author = {Schwalbe-Koda, Daniel and Hamel, Sebastien and Sadigh, Babak and Zhou, Fei and Lordi, Vincenzo},
     year = {2024},
     journal = {arXiv:2404.12367},
@@ -160,6 +236,6 @@ SPDX: BSD-3-Clause
 
 ## Acknowledgements
 
-This work was produced under the auspices of the U.S. Department of Energy by Lawrence Livermore National Laboratory under Contract DE-AC52-07NA27344, with support from LLNL's LDRD program under tracking codes 22-ERD-055 and 23-SI-006.
+This work was initially produced under the auspices of the U.S. Department of Energy by Lawrence Livermore National Laboratory under Contract DE-AC52-07NA27344, with support from LLNL's LDRD program under tracking codes 22-ERD-055 and 23-SI-006.
 
 Code released as LLNL-CODE-858914

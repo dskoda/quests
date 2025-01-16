@@ -3,23 +3,44 @@ import json
 import os
 import sys
 import time
+import random
 
 import click
 import numba as nb
 import numpy as np
 from ase.io import read, write
 
-from quests.descriptor import DEFAULT_CUTOFF, DEFAULT_K, get_descriptors
-from quests.entropy import DEFAULT_BANDWIDTH, DEFAULT_BATCH, delta_entropy
+from quests.mcmc import augment_pbc, DEFAULT_TARGET
+from quests.descriptor import DEFAULT_CUTOFF, DEFAULT_K
+from quests.entropy import DEFAULT_BANDWIDTH, DEFAULT_BATCH
 from quests.tools.time import Timer
 
-from .load_file import descriptors_from_file
 from .log import format_time, logger
 
 
-@click.command("dH")
-@click.argument("test", required=1)
+@click.command("mcmc")
 @click.argument("reference", required=1)
+@click.option(
+    "-i",
+    "--index",
+    type=int,
+    default=None,
+    help=f"Index of the object that will serve as starting point. If not given, randomly samples one from the dataset",
+)
+@click.option(
+    "-n",
+    "--n_steps",
+    type=int,
+    default=1000,
+    help=f"Number of Monte Carlo steps (default: 1000)",
+)
+@click.option(
+    "-t",
+    "--target",
+    type=int,
+    default=DEFAULT_TARGET,
+    help=f"Target dH for the generation of new structures (default: {DEFAULT_TARGET:.0f})",
+)
 @click.option(
     "-c",
     "--cutoff",
@@ -68,9 +89,17 @@ from .log import format_time, logger
     default=False,
     help="If True, overwrite the output file",
 )
-def dH(
-    test,
+@click.option(
+    "--compare",
+    is_flag=True,
+    default=False,
+    help="If True, create an output file that compares the initial and final structures",
+)
+def mcmc(
     reference,
+    index,
+    n_steps,
+    target,
     cutoff,
     nbrs,
     bandwidth,
@@ -78,6 +107,7 @@ def dH(
     batch_size,
     output,
     overwrite,
+    compare,
 ):
     if output is not None and os.path.exists(output) and not overwrite:
         logger(f"Output file {output} exists. Aborting...")
@@ -86,41 +116,28 @@ def dH(
     if jobs is not None:
         nb.set_num_threads(jobs)
 
-    x, _ = descriptors_from_file(test, nbrs, cutoff)
-    ref, _ = descriptors_from_file(reference, nbrs, cutoff)
+    dset = read(reference, index=":")
 
-    logger("Computing dH...")
+    if index is None:
+        at = random.sample(dset, k=1)
+    elif index < 0 or index > len(dset):
+        raise ValueError("Index should be between 0 and the dataset size ({len(dset)})")
+    else:
+        at = dset[index]
+
+    logger("Sampling new structure")
     with Timer() as t:
-        delta = delta_entropy(x, ref, h=bandwidth, batch_size=batch_size)
+        best, res = augment_pbc(
+            at, dset, n_steps=n_steps, target_dH=target, k=nbrs, cutoff=cutoff
+        )
     entropy_time = t.time
-    logger(f"dH computed in: {format_time(entropy_time)}")
+    logger(f"Structure sampled in: {format_time(entropy_time)}")
 
     if output is None:
         sys.exit()
 
+    # exports the structure
+    out = [at, best] if compare else best
     if output.endswith(".xyz"):
-        dset = read(test, index=":")
-        i = 0
-        for atoms in dset:
-            n = len(atoms)
-            _dH = delta[i : i + n]
-            atoms.set_array("dH", _dH)
-            i += n
-
-        write(output, dset, format="extxyz")
+        write(output, out, format="extxyz")
         sys.exit()
-
-    results = {
-        "reference_file": reference,
-        "test_file": test,
-        "test_envs": x.shape[0],
-        "ref_envs": ref.shape[0],
-        "k": nbrs,
-        "cutoff": cutoff,
-        "bandwidth": bandwidth,
-        "jobs": jobs,
-        "delta_entropy": list(delta.astype(float)),
-    }
-
-    with open(output, "w") as f:
-        json.dump(results, f, indent=4)
