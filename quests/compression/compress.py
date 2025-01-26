@@ -6,11 +6,12 @@ import ray
 from ase import Atoms
 from bayes_opt import BayesianOptimization
 from quests.descriptor import get_descriptors
-from quests.entropy import DEFAULT_BANDWIDTH, DEFAULT_BATCH, diversity, perfect_entropy
+from quests.entropy import DEFAULT_BANDWIDTH, DEFAULT_BATCH, diversity, perfect_entropy, delta_entropy
 
 from .baseline import k_means, mean_fps, random_sample
 from .fps import fps, msc
 
+EPSILON = 1e-5
 METHODS = {
     "fps": fps,
     "msc": msc,
@@ -24,12 +25,17 @@ class DatasetCompressor:
     def __init__(
         self,
         dset: List[Atoms],
-        descriptor_fn: Callable,
+        descriptor_fn: Callable = None,
         bandwidth: float = DEFAULT_BANDWIDTH,
         batch_size: int = DEFAULT_BATCH,
     ):
         self.dset = dset
-        self.descriptor_fn = descriptor_fn
+
+        if descriptor_fn is None:
+            self.descriptor_fn = lambda _data: get_descriptors(_data)
+        else:
+            self.descriptor_fn = descriptor_fn
+
         self.bandwidth = bandwidth
         self.batch_size = batch_size
         self._descriptors = [descriptor_fn(at) for at in dset]
@@ -55,6 +61,16 @@ class DatasetCompressor:
             data = np.concatenate([self._descriptors[i] for i in selected], axis=0)
 
         return diversity(data, h=self.bandwidth, batch_size=self.batch_size)
+
+    def overlap(self, selected: List[int] = None):
+        if selected is None:
+            return 1.0
+
+        data = np.concatenate([self._descriptors[i] for i in selected], axis=0)
+        full = np.concatenate(self._descriptors, axis=0)
+
+        dH = delta_entropy(data, full, h=self.bandwidth, batch_size=self.batch_size)
+        return (dH < EPSILON).mean()
 
     @property
     def dataset_size(self):
