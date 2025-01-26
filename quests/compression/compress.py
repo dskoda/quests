@@ -2,13 +2,22 @@ from collections import defaultdict
 from typing import Callable, List, Tuple
 
 import numpy as np
+import ray
 from ase import Atoms
 from bayes_opt import BayesianOptimization
 from quests.descriptor import get_descriptors
 from quests.entropy import DEFAULT_BANDWIDTH, DEFAULT_BATCH, diversity, perfect_entropy
-import ray 
 
+from .baseline import k_means, mean_fps, random_sample
 from .fps import fps, msc
+
+METHODS = {
+    "fps": fps,
+    "msc": msc,
+    "random": random_sample,
+    "mean_fps": mean_fps,
+    "k_means": k_means,
+}
 
 
 class DatasetCompressor:
@@ -52,10 +61,9 @@ class DatasetCompressor:
         return len(self.dset)
 
     def _check_compression_method(self, method: str):
-        acceptable = ["msc", "fps", "msct"]
-        assert method in acceptable, (
+        assert method in METHODS, (
             f"Compression method {method} not known."
-            + f"Acceptable values are: {acceptable}"
+            + f"Acceptable values are: {list(METHODS.keys())}"
         )
 
     def _check_frac(self, frac: float):
@@ -84,7 +92,7 @@ class DatasetCompressor:
         self,
         method: str = "msc",
         min_frac: float = 0.1,
-        random_state: int = 1243,
+        random_state: int = None,
         init_points: int = 5,
         n_iter: int = 20,
     ):
@@ -93,7 +101,9 @@ class DatasetCompressor:
         fn = lambda frac: self.cost_fn(frac=frac, method=method)
 
         bounds = {"frac": (min_frac, 1)}
-        opt = BayesianOptimization(f=fn, pbounds=bounds, random_state=random_state, allow_duplicate_points = True)
+        opt = BayesianOptimization(
+            f=fn, pbounds=bounds, random_state=random_state, allow_duplicate_points=True
+        )
         opt.maximize(init_points=init_points, n_iter=n_iter)
         optimal_frac = opt.max["params"]["frac"]
 
@@ -101,11 +111,13 @@ class DatasetCompressor:
 
     def get_indices(self, method: str, size: int, **kwargs):
         self._check_compression_method(method)
-        SELECT_FNS = {
-            "fps": fps,
-            "msc": fps,
-            "msct": msc,
-        }
-        select_fn = SELECT_FNS[method]
-        return select_fn(self._descriptors, self._entropies, size, method=method)
-    
+        compress_fn = METHODS[method]
+
+        if methods == "msc":
+            kwargs = {
+                **kwargs,
+                "h": self.bandwidth,
+                "batch_size": self.batch_size,
+            }
+
+        return compress_fn(self._descriptors, self._entropies, size, **kwargs)
