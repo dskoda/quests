@@ -8,7 +8,7 @@ from quests.descriptor import get_descriptors
 from quests.entropy import DEFAULT_BANDWIDTH, DEFAULT_BATCH, diversity, perfect_entropy
 import ray 
 
-from .fps import fps
+from .fps import fps, msc
 
 
 class DatasetCompressor:
@@ -52,7 +52,7 @@ class DatasetCompressor:
         return len(self.dset)
 
     def _check_compression_method(self, method: str):
-        acceptable = ["msc", "fps"]
+        acceptable = ["msc", "fps", "msct"]
         assert method in acceptable, (
             f"Compression method {method} not known."
             + f"Acceptable values are: {acceptable}"
@@ -101,5 +101,11 @@ class DatasetCompressor:
 
     def get_indices(self, method: str, size: int, **kwargs):
         self._check_compression_method(method)
-        return fps(self._descriptors, self._entropies, size, method=method)
+        SELECT_FNS = {
+            "fps": fps,
+            "msc": fps,
+            "msct": msc,
+        }
+        select_fn = SELECT_FNS[method]
+        return select_fn(self._descriptors, self._entropies, size, method=method)
     

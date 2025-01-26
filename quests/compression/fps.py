@@ -69,7 +69,7 @@ def fps(
     return compressed
 
 
-def msc(descriptors: List[np.ndarray], entropies: np.ndarray, size: int) -> List[int]:
+def msc(descriptors: List[np.ndarray], entropies: np.ndarray, size: int, method: str = "msc") -> List[int]:
     """Compresses the dataset using a special algorithm that accounts for
     the novelty of each environment in each structure to the compressed
     dataset. Each comparison allows us to select the most novel and diverse
