@@ -105,7 +105,7 @@ def compress(
 
     dset = read(file, index=":")
 
-    descriptor_fn = lambda ds: get_descriptors(ds, k=nbrs, cutoff=cutoff)
+    descriptor_fn = lambda ds: get_descriptors([ds], k=nbrs, cutoff=cutoff)
     compressor = DatasetCompressor(
         dset, descriptor_fn, bandwidth=bandwidth, batch_size=batch_size
     )
@@ -123,8 +123,6 @@ def compress(
     logger(f"Computing metrics...")
 
     with Timer() as t:
-        orig_H = compressor.entropy()
-        orig_D = compressor.diversity()
         comp_H = compressor.entropy(selected)
         comp_D = compressor.diversity(selected)
         overlap = compressor.overlap(selected)
@@ -135,11 +133,14 @@ def compress(
 
     metrics_time = t.time
     logger(f"Computed metrics in {format_time(metrics_time)}")
-    logger(f"Entropy:    Orig: {orig_H:.2f} | Comp: {comp_H}")
-    logger(f"Diversity:  Orig: {orig_D:.2f} | Comp: {comp_D}")
-    logger(f"# Structs:  Orig: {orig_structs:.0f} | Comp: {comp_structs:.0f}")
-    logger(f"# Envs:     Orig: {orig_envs:.0f} | Comp: {comp_envs:.0f}")
-    logger(f"Overlap:    {overlap * 100:.1f}")
+    logger(f"Entropy: {comp_H:.2f}")
+    logger(f"Diversity: {comp_D:.2f}")
+    logger(f"# Structs: {comp_structs:.0f} (out of {orig_structs:.0f})")
+    logger(f"# Envs: {comp_envs:.0f} (out of {orig_envs:.0f})")
+    logger(f"Overlap: {overlap * 100:.1f}%")
+
+    if output is None:
+        sys.exit()
 
     if output.endswith(".xyz"):
         new = [dset[i] for i in selected]
@@ -165,9 +166,5 @@ def compress(
         "overlap": overlap,
         "selected": selected,
     }
-    # log the results
-    if output is not None:
-        with open(output, "w") as f:
-            json.dump(results, f, indent=4)
-
-    logger("Compression completed")
+    with open(output, "w") as f:
+        json.dump(results, f, indent=4)

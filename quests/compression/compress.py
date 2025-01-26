@@ -69,7 +69,7 @@ class DatasetCompressor:
         data = np.concatenate([self._descriptors[i] for i in selected], axis=0)
         full = np.concatenate(self._descriptors, axis=0)
 
-        dH = delta_entropy(data, full, h=self.bandwidth, batch_size=self.batch_size)
+        dH = delta_entropy(full, data, h=self.bandwidth, batch_size=self.batch_size)
         return (dH < EPSILON).mean()
 
     @property
@@ -129,7 +129,7 @@ class DatasetCompressor:
         self._check_compression_method(method)
         compress_fn = METHODS[method]
 
-        if methods == "msc":
+        if method == "msc":
             kwargs = {
                 **kwargs,
                 "h": self.bandwidth,
