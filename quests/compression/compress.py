@@ -118,7 +118,7 @@ class DatasetCompressor:
 
         bounds = {"frac": (min_frac, 1)}
         opt = BayesianOptimization(
-            f=fn, pbounds=bounds, random_state=random_state, allow_duplicate_points=True
+            f=fn, pbounds=bounds, random_state=random_state, allow_duplicate_points=True # potentially suboptional cost function 
         )
         opt.maximize(init_points=init_points, n_iter=n_iter)
         optimal_frac = opt.max["params"]["frac"]
@@ -137,3 +137,50 @@ class DatasetCompressor:
             }
 
         return compress_fn(self._descriptors, self._entropies, size, **kwargs)
+    
+    def segment_compress(self, method: str, size: int, num_chunks: int, **kwargs):
+        self._check_compression_method(method)
+
+        N = len(self._descriptors)
+        
+        if method == "msc":
+            kwargs = {
+                **kwargs,
+                "h": self.bandwidth,
+                "batch_size": self.batch_size,
+            }
+
+        return self.compress_chunk(self._descriptors, self._entropies, method, size, num_chunks, **kwargs)
+    
+    def compress_chunk(self, descriptors: np.ndarray, entropies: np.ndarray, method: str, size: int, num_chunks: int, **kwargs):
+
+        compress_fn = METHODS[method]
+
+        N = len(descriptors)
+
+        if N <= size:
+            return np.arange(N)
+        
+        chunk_size = num_chunks * size
+        num_subsets = int(np.ceil(N / chunk_size))
+        y = []
+        for i in range(num_subsets):
+            start = i * chunk_size
+            chunk = descriptors[start : start + chunk_size]
+            initial_entropies_chunk = entropies[start : start + chunk_size]
+            y.append(
+                start
+                + np.array(
+                    compress_fn(chunk, initial_entropies_chunk, size, **kwargs)
+                )
+            )
+
+        y = np.concatenate(y)
+        result = []
+        for ind in y:
+            result.append(descriptors[ind])
+        i = self.compress_chunk(result, entropies[y], method, size, num_chunks, **kwargs)
+        return y[i]
+
+
+
