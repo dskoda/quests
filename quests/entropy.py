@@ -36,6 +36,7 @@ def perfect_entropy(
     N = x.shape[0]
     if type(h) is int or type(h) is float:
         p_x = kernel_sum(x, x, h=h, batch_size=batch_size)
+        # normalizes the p(x) prior to the log for numerical stability
         p_x = np.log(p_x / N)
         return -np.mean(p_x)
     else:
@@ -116,7 +117,7 @@ def kernel_sum(
     Arguments:
         x (np.ndarray): an (M, d) matrix with the test descriptors
         y (np.ndarray): an (N, d) matrix with the reference descriptors
-        h (int): bandwidth for the Gaussian kernel 
+        h (int): bandwidth for the Gaussian kernel
         batch_size (int): maximum batch size to consider when
             performing a distance calculation.
 
@@ -237,7 +238,7 @@ def weighted_kernel_sum(
     batch_size: int = DEFAULT_BATCH,
 ):
     """Computes the product w_j * K_ij for the descriptors x_i and y_j, and
-        a given weight w_j of same first dimension length as y_j.
+        a given weight w_j of same size as y_j. 
 
     Arguments:
         x (np.ndarray): an (M, d) matrix with the test descriptors

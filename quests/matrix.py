@@ -6,7 +6,7 @@ import numpy as np
 
 @nb.njit(fastmath=True)
 def sum_positive(X):
-    """sumexp keeping only positive terms, optimized for numba. 
+    """sum only positive terms, optimized for numba. 
         Can lead to numerical instabilities, but it's really fast.
 
     Arguments:
@@ -14,7 +14,7 @@ def sum_positive(X):
             summation will happen over the axis 1.
 
     Returns:
-        sumexp (np.ndarray): (d,) matrix
+        sumexp (np.ndarray): (d,) matrix is sum(max(X,0), axis=1)
     """
     result = np.empty(X.shape[0], dtype=X.dtype)
     for i in range(X.shape[0]):
@@ -120,7 +120,7 @@ def cdist(A, B, norm_A=None, norm_B=None):
         B (np.ndarray): an (M, d2) float matrix with the descriptors
 
     Returns:
-        dist (np.ndarray): a (M,N) float matrix of the
+        dist (np.ndarray): a (N,M) float matrix of the
                             distances between the descriptors.
     """
     # Computing the dot product
