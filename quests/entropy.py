@@ -25,44 +25,53 @@ def perfect_entropy(
 
     Arguments:
         x (np.ndarray): an (N, d) matrix with the descriptors
-        h (int): bandwidth for the Gaussian kernel
+        h (int or np.nadarray): bandwidth (value / vector) for the Gaussian kernel
         batch_size (int): maximum batch size to consider when
             performing a distance calculation.
 
     Returns:
         entropy (float): entropy of the dataset given by `x`.
+            or (np.ndarray): if 'h' is a vector
     """
     N = x.shape[0]
-    p_x = kernel_sum(x, x, h=h, batch_size=batch_size)
-
-    # normalizes the p(x) prior to the log for numerical stability
-    p_x = np.log(p_x / N)
-
-    return -np.mean(p_x)
+    if type(h) is int or type(h) is float:
+        p_x = kernel_sum(x, x, h=h, batch_size=batch_size)
+        p_x = np.log(p_x / N)
+        return -np.mean(p_x)
+    else:
+        p_x = kernel_sum_multi_bandwidth(x, x, h=h, batch_size=batch_size)
+        # normalizes the p(x) prior to the log for numerical stability
+        p_x = np.log(p_x / N)
+        return -np.mean(p_x, axis=1)
 
 
 def delta_entropy(
-    y: np.ndarray,
     x: np.ndarray,
+    y: np.ndarray,
     h: float = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,
 ):
-    """Computes the differential entropy of a dataset `y` using the dataset
-        `x` as reference. This function can be SLOW, despite the optimization
+    """Computes the differential entropy of a dataset `x` using the dataset
+        `y` as reference. This function can be SLOW, despite the optimization
         of the computation, as it does not approximate the results.
 
     Arguments:
-        y (np.ndarray): an (N, d) matrix with the descriptors of the test set
-        x (np.ndarray): an (N, d) matrix with the descriptors of the reference
-        h (int): bandwidth for the Gaussian kernel
+        x (np.ndarray): an (M, d) matrix with the descriptors of the test set
+        y (np.ndarray): an (N, d) matrix with the descriptors of the reference
+        h (int or np.nadarray): bandwidth (value / vector) for the Gaussian kernel
         batch_size (int): maximum batch size to consider when
             performing a distance calculation.
 
     Returns:
-        dH (np.ndarray): differential entropy dH ( Y | X )
+        entropy (np.ndarray): an (M,) vector of delta entropy between elements of
+        `x` given dataset 'y'.
+            or (np.ndarray): an (H,M) matrix if 'h' is a vector of length H
     """
-    p_y = kernel_sum(y, x, h=h, batch_size=batch_size)
-    return -np.log(p_y)
+    if type(h) is int or type(h) is float:
+        p_x = kernel_sum(x, y, h=h, batch_size=batch_size)
+    else:
+        p_x = kernel_sum_multi_bandwidth(x, y, h=h, batch_size=batch_size)
+    return -np.log(p_x)
 
 
 def diversity(
@@ -76,15 +85,20 @@ def diversity(
 
     Arguments:
         x (np.ndarray): an (N, d) matrix with the descriptors of the dataset
-        h (int): bandwidth for the Gaussian kernel
+        h (int or np.nadarray): bandwidth (value / vector) for the Gaussian kernel
         batch_size (int): maximum batch size to consider when
             performing a distance calculation.
 
     Returns:
         entropy (float): entropy of the dataset given by `x`.
+            or (np.ndarray): if 'h' is a vector
     """
-    p_x = kernel_sum(x, x, h=h, batch_size=batch_size)
-    return np.sum(1 / p_x)
+    if type(h) is int or type(h) is float:
+        p_x = kernel_sum(x, x, h=h, batch_size=batch_size)
+        return np.sum(1 / p_x)
+    else:
+        p_x = kernel_sum_multi_bandwidth(x, x, h=h, batch_size=batch_size)
+        return np.sum((1 / p_x), axis=1)
 
 
 @nb.njit(fastmath=True, parallel=True, cache=True)
@@ -103,7 +117,7 @@ def kernel_sum(
     Arguments:
         x (np.ndarray): an (M, d) matrix with the test descriptors
         y (np.ndarray): an (N, d) matrix with the reference descriptors
-        h (int): bandwidth for the Gaussian kernel
+        h (int): bandwidth for the Gaussian kernel 
         batch_size (int): maximum batch size to consider when
             performing a distance calculation.
 
@@ -150,6 +164,70 @@ def kernel_sum(
 
     return p_x
 
+@nb.njit(fastmath=True, parallel=True, cache=True)
+def kernel_sum_multi_bandwidth(
+    x: np.ndarray,
+    y: np.ndarray,
+    h: np.ndarray = np.array(DEFAULT_BANDWIDTH),
+    batch_size: int = DEFAULT_BATCH,
+):
+    """Computes the kernel matrix K_ij for the descriptors x_i and y_j.
+        Because the entire matrix cannot fit in the memory, this function
+        automatically applies the kernel and sums the results, essentially
+        recovering the probability distribution p(x) up to a normalization
+        constant.
+
+    Arguments:
+        x (np.ndarray): an (M, d) matrix with the test descriptors
+        y (np.ndarray): an (N, d) matrix with the reference descriptors
+        h (np.ndarray): bandwidth (H) vector for the Gaussian kernel
+        batch_size (int): maximum batch size to consider when
+            performing a distance calculation.
+
+    Returns:
+        ki (np.ndarray): an (H,M) matrix containing the probability of x_i
+            given `y` for each bandwidth 'h'
+    """
+    M = x.shape[0]
+    max_step_x = math.ceil(M / batch_size)
+
+    N = y.shape[0]
+    max_step_y = math.ceil(N / batch_size)
+
+    # precomputing the norms saves us some time
+    norm_x = norm(x)
+    norm_y = norm(y)
+
+    # variables that are going to store the results
+    len_h = h.shape[0]
+    p_x = np.zeros((len_h,M), dtype=x.dtype)
+
+    # loops over rows and columns to compute the
+    # distance matrix without keeping it entirely
+    # in the memory
+    for step_x in nb.prange(0, max_step_x):
+        i = step_x * batch_size
+        imax = min(i + batch_size, M)
+        x_batch = x[i:imax]
+        x_batch_norm = norm_x[i:imax]
+
+        # loops over all columns in batches to prevent memory overflow
+        for step_y in range(0, max_step_y):
+            j = step_y * batch_size
+            jmax = min(j + batch_size, N)
+            y_batch = y[j:jmax]
+            y_batch_norm = norm_y[j:jmax]
+
+            # computing the estimated probability distribution for the batch
+            z = cdist(x_batch, y_batch, x_batch_norm, y_batch_norm)
+            for h_i in range(len_h):
+                h0 = h[h_i]
+                zm = z / h0
+                zm = sumexp(-0.5 * (zm**2))
+                for k in range(i, imax):
+                    p_x[h_i, k] = p_x[h_i, k] + zm[k - i]
+    return p_x
+
 
 @nb.njit(fastmath=True, parallel=True, cache=True)
 def weighted_kernel_sum(
@@ -160,18 +238,21 @@ def weighted_kernel_sum(
     batch_size: int = DEFAULT_BATCH,
 ):
     """Computes the product w_j * K_ij for the descriptors x_i and y_j, and
-        a given weight w_j of same size as y_j.
+        a given weight w_j of same first dimension length as y_j.
 
     Arguments:
         x (np.ndarray): an (M, d) matrix with the test descriptors
         y (np.ndarray): an (N, d) matrix with the reference descriptors
-        w (np.ndarray): an (N, d) matrix with the weights
+        w (np.ndarray): an (N,) vector with the weights
         h (int): bandwidth for the Gaussian kernel
         batch_size (int): maximum batch size to consider when
             performing a distance calculation.
 
     Returns:
+        (q, ki) (tuple): where q and ki are as described below
         q (np.ndarray): a (M,) vector containing the weighted average of w
+            given `y`
+        ki (np.ndarray): a (M,) vector containing the probability of x_i
             given `y`
     """
     M = x.shape[0]
@@ -225,6 +306,85 @@ def weighted_kernel_sum(
     return w_x, p_x
 
 
+@nb.njit(fastmath=True, parallel=True, cache=True)
+def weighted_kernel_sum_multi_bandwidth(
+    x: np.ndarray,
+    y: np.ndarray,
+    w: np.ndarray,
+    h: float = DEFAULT_BANDWIDTH,
+    batch_size: int = DEFAULT_BATCH,
+):
+    """Computes the product w_j * K_ij for the descriptors x_i and y_j, and
+        a given weight w_j of same first dimension length as y_j.
+
+    Arguments:
+        x (np.ndarray): an (M, d) matrix with the test descriptors
+        y (np.ndarray): an (N, d) matrix with the reference descriptors
+        w (np.ndarray): an (N,) vector with the weights
+        h (np.ndarray): bandwidth (H) vector for the Gaussian kernel
+        batch_size (int): maximum batch size to consider when
+            performing a distance calculation.
+
+    Returns:
+        (q, ki) (tuple): where q and ki are as described below
+        q (np.ndarray): an (H,M) matrix containing the weighted average of w
+            given `y` for each bandwidth 'h'
+        ki (np.ndarray): an (H,M) matrix containing the probability of x_i
+            given `y` for each bandwidth 'h'
+    """
+    M = x.shape[0]
+    max_step_x = math.ceil(M / batch_size)
+
+    N = y.shape[0]
+    max_step_y = math.ceil(N / batch_size)
+
+    # precomputing the norms saves us some time
+    norm_x = norm(x)
+    norm_y = norm(y)
+
+    # variables that are going to store the results
+    len_h = h.shape[0]
+    p_x = np.zeros((len_h,M), dtype=x.dtype)
+    w_x = np.zeros((len_h,M), dtype=x.dtype)
+
+    # loops over rows and columns to compute the
+    # distance matrix without keeping it entirely
+    # in the memory
+    for step_x in nb.prange(0, max_step_x):
+        i = step_x * batch_size
+        imax = min(i + batch_size, M)
+        x_batch = x[i:imax]
+        x_batch_norm = norm_x[i:imax]
+
+        # loops over all columns in batches to prevent memory overflow
+        for step_y in range(0, max_step_y):
+            j = step_y * batch_size
+            jmax = min(j + batch_size, N)
+            y_batch = y[j:jmax]
+            y_batch_norm = norm_y[j:jmax]
+
+            w_batch = w[j:jmax]
+
+            # computing the estimated probability distribution for the batch
+            z = cdist(x_batch, y_batch, x_batch_norm, y_batch_norm)
+            for h_i in range(len_h):
+                h0 = h[h_i]
+                zm = z / h0
+                zm = -0.5 * (zm**2)
+                
+                # computed the expected value of the error
+                p = sumexp(zm)
+                wp = wsumexp(zm, w_batch)
+                for k in range(i, imax):
+                    p_x[h_i, k] = p_x[h_i, k] + p[k - i]
+                    w_x[h_i, k] = w_x[h_i, k] + wp[k - i]
+
+        for h_i in range(len_h):
+            for k in range(i, imax):
+                w_x[h_i, k] = w_x[h_i, k] / p_x[h_i, k]
+
+    return w_x, p_x
+
 def get_bandwidth(volume: float, method: str = "gaussian"):
     """Estimate of the bandwidth based on the dependence
         of the entropy w.r.t. volume per atom (or density).
@@ -247,35 +407,47 @@ def get_bandwidth(volume: float, method: str = "gaussian"):
 
 
 def approx_delta_entropy(
-    y: np.ndarray,
     x: np.ndarray,
+    y: np.ndarray,
     h: float = DEFAULT_BANDWIDTH,
     n: int = DEFAULT_UQ_NBRS,
     graph_neighbors: int = DEFAULT_GRAPH_NBRS,
     **kwargs,
 ):
-    """Computes an approximate differential entropy of a dataset `y` using the dataset
-        `x` as reference. This function was optimized to be FAST and multithreaded, but
+    """Computes an approximate differential entropy of a dataset `x` using the dataset
+        `y` as reference. This function was optimized to be FAST and multithreaded, but
         the recall may not be 100%. If recall is an issue, please consult the PyNNDescent
         documentation for the choice of keywords.
 
     Arguments:
-        y (np.ndarray): an (N, d) matrix with the descriptors of the test set
-        x (np.ndarray): an (N, d) matrix with the descriptors of the reference
-        h (int): bandwidth for the Gaussian kernel
+        x (np.ndarray): an (M, d) matrix with the descriptors of the test set
+        y (np.ndarray): an (N, d) matrix with the descriptors of the reference
+        h (int or np.nadarray): bandwidth (value / vector) for the Gaussian kernel 
         k (int): number of nearest-neighbors to take into account when computing
             the approximate dH
 
     Returns:
-        dH (np.ndarray): approx. differential entropy of the dataset given by `x`.
+        dH (np.ndarray): (M,) approx. differential entropy of the dataset given by `x`.
+            or (np.ndarray): an (H,M) matrix if 'h' is a vector of length H
     """
     import pynndescent as nnd
 
-    index = nnd.NNDescent(x, n_neighbors=graph_neighbors, **kwargs)
+    index = nnd.NNDescent(y, n_neighbors=graph_neighbors, **kwargs)
     index.prepare()
 
-    _, d = index.query(y, k=n)
-    z = d / h
-    p_y = sumexp(-0.5 * z**2)
+    _, d = index.query(x, k=n)
+    if type(h) is int or type(h) is float:
+        z = d / h
+        p_x = sumexp(-0.5 * z**2)
+    else:
+        # variables that are going to store the results
+        len_h = h.shape[0]
+        imax = x.shape[0]
+        p_x = np.zeros((len_h,M), dtype=x.dtype)
+        for h_i in range(len_h):
+            h0 = h[h_i]
+            zm = d / h0
+            zm = sumexp(-0.5 * (zm**2)
+            p_x[h_i,:] = zm
 
-    return -np.log(p_y)
+    return -np.log(p_x)
