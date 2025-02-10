@@ -46,32 +46,31 @@ def perfect_entropy(
 
 
 def delta_entropy(
-    x: np.ndarray,
     y: np.ndarray,
+    x: np.ndarray,
     h: float = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,
 ):
-    """Computes the differential entropy of a dataset `x` using the dataset
-        `y` as reference. This function can be SLOW, despite the optimization
+    """Computes the differential entropy of a dataset `y` using the dataset
+        `x` as reference. This function can be SLOW, despite the optimization
         of the computation, as it does not approximate the results.
 
     Arguments:
-        x (np.ndarray): an (M, d) matrix with the descriptors of the test set
-        y (np.ndarray): an (N, d) matrix with the descriptors of the reference
+        y (np.ndarray): an (M, d) matrix with the descriptors of the test set
+        x (np.ndarray): an (N, d) matrix with the descriptors of the reference
         h (int or np.nadarray): bandwidth (value / vector) for the Gaussian kernel
         batch_size (int): maximum batch size to consider when
             performing a distance calculation.
 
     Returns:
-        entropy (np.ndarray): an (M,) vector of delta entropy between elements of
-        `x` given dataset 'y'.
+        dH (np.ndarray): an (M,) vector of differential entropy dH ( Y | X )
             or (np.ndarray): an (H,M) matrix if 'h' is a vector of length H
     """
     if type(h) is int or type(h) is float:
-        p_x = kernel_sum(x, y, h=h, batch_size=batch_size)
+        p_y = kernel_sum(y, x, h=h, batch_size=batch_size)
     else:
-        p_x = kernel_sum_multi_bandwidth(x, y, h=h, batch_size=batch_size)
-    return -np.log(p_x)
+        p_y = kernel_sum_multi_bandwidth(y, x, h=h, batch_size=batch_size)
+    return -np.log(p_y)
 
 
 def diversity(
@@ -407,21 +406,21 @@ def get_bandwidth(volume: float, method: str = "gaussian"):
 
 
 def approx_delta_entropy(
-    x: np.ndarray,
     y: np.ndarray,
+    x: np.ndarray,
     h: float = DEFAULT_BANDWIDTH,
     n: int = DEFAULT_UQ_NBRS,
     graph_neighbors: int = DEFAULT_GRAPH_NBRS,
     **kwargs,
 ):
-    """Computes an approximate differential entropy of a dataset `x` using the dataset
-        `y` as reference. This function was optimized to be FAST and multithreaded, but
+    """Computes an approximate differential entropy of a dataset `y` using the dataset
+        `x` as reference. This function was optimized to be FAST and multithreaded, but
         the recall may not be 100%. If recall is an issue, please consult the PyNNDescent
         documentation for the choice of keywords.
 
     Arguments:
-        x (np.ndarray): an (M, d) matrix with the descriptors of the test set
-        y (np.ndarray): an (N, d) matrix with the descriptors of the reference
+        y (np.ndarray): an (M, d) matrix with the descriptors of the test set
+        x (np.ndarray): an (N, d) matrix with the descriptors of the reference
         h (int or np.nadarray): bandwidth (value / vector) for the Gaussian kernel 
         k (int): number of nearest-neighbors to take into account when computing
             the approximate dH
@@ -432,22 +431,22 @@ def approx_delta_entropy(
     """
     import pynndescent as nnd
 
-    index = nnd.NNDescent(y, n_neighbors=graph_neighbors, **kwargs)
+    index = nnd.NNDescent(x, n_neighbors=graph_neighbors, **kwargs)
     index.prepare()
 
-    _, d = index.query(x, k=n)
+    _, d = index.query(y, k=n)
     if type(h) is int or type(h) is float:
         z = d / h
-        p_x = sumexp(-0.5 * z**2)
+        p_y = sumexp(-0.5 * z**2)
     else:
         # variables that are going to store the results
         len_h = h.shape[0]
-        imax = x.shape[0]
-        p_x = np.zeros((len_h,M), dtype=x.dtype)
+        imax = y.shape[0]
+        p_y = np.zeros((len_h,imax), dtype=y.dtype)
         for h_i in range(len_h):
             h0 = h[h_i]
             zm = d / h0
             zm = sumexp(-0.5 * (zm**2)
-            p_x[h_i,:] = zm
+            p_y[h_i,:] = zm
 
-    return -np.log(p_x)
+    return -np.log(p_y)
