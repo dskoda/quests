@@ -447,7 +447,7 @@ def approx_delta_entropy(
         for h_i in range(len_h):
             h0 = h[h_i]
             zm = d / h0
-            zm = sumexp(-0.5 * (zm**2)
+            zm = sumexp(-0.5 * (zm**2))
             p_y[h_i,:] = zm
 
     return -np.log(p_y)
