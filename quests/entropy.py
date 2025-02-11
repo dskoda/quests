@@ -34,16 +34,16 @@ def perfect_entropy(
             or (np.ndarray): if 'h' is a vector
     """
     N = x.shape[0]
-    if type(h) is int or type(h) is float:
-        p_x = kernel_sum(x, x, h=h, batch_size=batch_size)
-        # normalizes the p(x) prior to the log for numerical stability
-        p_x = np.log(p_x / N)
-        return -np.mean(p_x)
-    else:
+    if type(h) is np.ndarray:
         p_x = kernel_sum_multi_bandwidth(x, x, h=h, batch_size=batch_size)
         # normalizes the p(x) prior to the log for numerical stability
         p_x = np.log(p_x / N)
         return -np.mean(p_x, axis=1)
+    else:
+        p_x = kernel_sum(x, x, h=h, batch_size=batch_size)
+        # normalizes the p(x) prior to the log for numerical stability
+        p_x = np.log(p_x / N)
+        return -np.mean(p_x)
 
 
 def delta_entropy(
@@ -67,10 +67,10 @@ def delta_entropy(
         dH (np.ndarray): an (M,) vector of differential entropy dH ( Y | X )
             or (np.ndarray): an (H,M) matrix if 'h' is a vector of length H
     """
-    if type(h) is int or type(h) is float:
-        p_y = kernel_sum(y, x, h=h, batch_size=batch_size)
-    else:
+    if type(h) is np.ndarray:
         p_y = kernel_sum_multi_bandwidth(y, x, h=h, batch_size=batch_size)
+    else:
+        p_y = kernel_sum(y, x, h=h, batch_size=batch_size)
     return -np.log(p_y)
 
 
@@ -93,12 +93,12 @@ def diversity(
         entropy (float): entropy of the dataset given by `x`.
             or (np.ndarray): if 'h' is a vector
     """
-    if type(h) is int or type(h) is float:
-        p_x = kernel_sum(x, x, h=h, batch_size=batch_size)
-        return np.sum(1 / p_x)
-    else:
+    if type(h) is np.ndarray:
         p_x = kernel_sum_multi_bandwidth(x, x, h=h, batch_size=batch_size)
         return np.sum((1 / p_x), axis=1)
+    else:
+        p_x = kernel_sum(x, x, h=h, batch_size=batch_size)
+        return np.sum(1 / p_x)
 
 
 @nb.njit(fastmath=True, parallel=True, cache=True)
@@ -436,10 +436,7 @@ def approx_delta_entropy(
     index.prepare()
 
     _, d = index.query(y, k=n)
-    if type(h) is int or type(h) is float:
-        z = d / h
-        p_y = sumexp(-0.5 * z**2)
-    else:
+    if type(h) is np.ndarray:
         # variables that are going to store the results
         len_h = h.shape[0]
         imax = y.shape[0]
@@ -447,7 +444,11 @@ def approx_delta_entropy(
         for h_i in range(len_h):
             h0 = h[h_i]
             zm = d / h0
-            zm = sumexp(-0.5 * (zm**2))
+            zm = sumexp(-0.5 * zm**2)
             p_y[h_i,:] = zm
+
+    else:
+        z = d / h
+        p_y = sumexp(-0.5 * z**2)
 
     return -np.log(p_y)
