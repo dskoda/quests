@@ -1,10 +1,11 @@
 import math
+from typing import List, Union
 
 import numba as nb
 import numpy as np
 
 from .geometry import cutoff_fn
-from .matrix import cdist, norm, sum_positive, sumexp, wsumexp
+from .matrix import cdist, norm, sumexp, wsumexp
 
 DEFAULT_BANDWIDTH = 0.015
 DEFAULT_BATCH = 20000
@@ -14,7 +15,7 @@ DEFAULT_GRAPH_NBRS = 10
 
 def perfect_entropy(
     x: np.ndarray,
-    h: float = DEFAULT_BANDWIDTH,
+    h: Union[float, List[float]] = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,
 ):
     """Computes the perfect entropy of a dataset using a batch distance
@@ -38,7 +39,7 @@ def perfect_entropy(
         p_x = kernel_sum_multi_bandwidth(x, x, h=h, batch_size=batch_size)
         # normalizes the p(x) prior to the log for numerical stability
         p_x = np.log(p_x / N)
-        return -np.mean(p_x, axis=1)
+        return -np.mean(p_x, axis=0)
     else:
         p_x = kernel_sum(x, x, h=h, batch_size=batch_size)
         # normalizes the p(x) prior to the log for numerical stability
@@ -76,7 +77,7 @@ def delta_entropy(
 
 def diversity(
     x: np.ndarray,
-    h: float = DEFAULT_BANDWIDTH,
+    h: Union[float, List[float]] = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,
 ):
     """Computes the diversity of a dataset `x` by assuming a sum over the
@@ -95,7 +96,7 @@ def diversity(
     """
     if type(h) is np.ndarray:
         p_x = kernel_sum_multi_bandwidth(x, x, h=h, batch_size=batch_size)
-        return np.sum((1 / p_x), axis=1)
+        return np.sum((1 / p_x), axis=0)
     else:
         p_x = kernel_sum(x, x, h=h, batch_size=batch_size)
         return np.sum(1 / p_x)
@@ -164,6 +165,7 @@ def kernel_sum(
 
     return p_x
 
+
 @nb.njit(fastmath=True, parallel=True, cache=True)
 def kernel_sum_multi_bandwidth(
     x: np.ndarray,
@@ -185,7 +187,7 @@ def kernel_sum_multi_bandwidth(
             performing a distance calculation.
 
     Returns:
-        ki (np.ndarray): an (H,M) matrix containing the probability of x_i
+        ki (np.ndarray): an (M, H) matrix containing the probability of x_i
             given `y` for each bandwidth 'h'
     """
     M = x.shape[0]
@@ -199,8 +201,8 @@ def kernel_sum_multi_bandwidth(
     norm_y = norm(y)
 
     # variables that are going to store the results
-    len_h = h.shape[0]
-    p_x = np.zeros((len_h,M), dtype=x.dtype)
+    H = h.shape[0]
+    p_x = np.zeros((M, H), dtype=x.dtype)
 
     # loops over rows and columns to compute the
     # distance matrix without keeping it entirely
@@ -220,12 +222,12 @@ def kernel_sum_multi_bandwidth(
 
             # computing the estimated probability distribution for the batch
             z = cdist(x_batch, y_batch, x_batch_norm, y_batch_norm)
-            for h_i in range(len_h):
+            for h_i in range(H):
                 h0 = h[h_i]
                 zm = z / h0
                 zm = sumexp(-0.5 * (zm**2))
                 for k in range(i, imax):
-                    p_x[h_i, k] = p_x[h_i, k] + zm[k - i]
+                    p_x[k, h_i] = p_x[k, h_i] + zm[k - i]
     return p_x
 
 
@@ -238,7 +240,7 @@ def weighted_kernel_sum(
     batch_size: int = DEFAULT_BATCH,
 ):
     """Computes the product w_j * K_ij for the descriptors x_i and y_j, and
-        a given weight w_j of same size as y_j. 
+        a given weight w_j of same size as y_j.
 
     Arguments:
         x (np.ndarray): an (M, d) matrix with the test descriptors
@@ -327,9 +329,9 @@ def weighted_kernel_sum_multi_bandwidth(
 
     Returns:
         (q, ki) (tuple): where q and ki are as described below
-        q (np.ndarray): an (H,M) matrix containing the weighted average of w
+        q (np.ndarray): an (M, H) matrix containing the weighted average of w
             given `y` for each bandwidth 'h'
-        ki (np.ndarray): an (H,M) matrix containing the probability of x_i
+        ki (np.ndarray): an (M, H) matrix containing the probability of x_i
             given `y` for each bandwidth 'h'
     """
     M = x.shape[0]
@@ -343,9 +345,9 @@ def weighted_kernel_sum_multi_bandwidth(
     norm_y = norm(y)
 
     # variables that are going to store the results
-    len_h = h.shape[0]
-    p_x = np.zeros((len_h,M), dtype=x.dtype)
-    w_x = np.zeros((len_h,M), dtype=x.dtype)
+    H = h.shape[0]
+    p_x = np.zeros((M, H), dtype=x.dtype)
+    w_x = np.zeros((M, H), dtype=x.dtype)
 
     # loops over rows and columns to compute the
     # distance matrix without keeping it entirely
@@ -367,23 +369,24 @@ def weighted_kernel_sum_multi_bandwidth(
 
             # computing the estimated probability distribution for the batch
             z = cdist(x_batch, y_batch, x_batch_norm, y_batch_norm)
-            for h_i in range(len_h):
+            for h_i in range(H):
                 h0 = h[h_i]
                 zm = z / h0
                 zm = -0.5 * (zm**2)
-                
+
                 # computed the expected value of the error
                 p = sumexp(zm)
                 wp = wsumexp(zm, w_batch)
                 for k in range(i, imax):
-                    p_x[h_i, k] = p_x[h_i, k] + p[k - i]
-                    w_x[h_i, k] = w_x[h_i, k] + wp[k - i]
+                    p_x[k, h_i] = p_x[k, h_i] + p[k - i]
+                    w_x[k, h_i] = w_x[k, h_i] + wp[k - i]
 
-        for h_i in range(len_h):
-            for k in range(i, imax):
-                w_x[h_i, k] = w_x[h_i, k] / p_x[h_i, k]
+        for k in range(i, imax):
+            for h_i in range(H):
+                w_x[k, h_i] = w_x[k, h_i] / p_x[k, h_i]
 
     return w_x, p_x
+
 
 def get_bandwidth(volume: float, method: str = "gaussian"):
     """Estimate of the bandwidth based on the dependence
@@ -422,7 +425,7 @@ def approx_delta_entropy(
     Arguments:
         y (np.ndarray): an (M, d) matrix with the descriptors of the test set
         x (np.ndarray): an (N, d) matrix with the descriptors of the reference
-        h (int or np.nadarray): bandwidth (value / vector) for the Gaussian kernel 
+        h (int or np.nadarray): bandwidth (value / vector) for the Gaussian kernel
         k (int): number of nearest-neighbors to take into account when computing
             the approximate dH
 
@@ -440,12 +443,12 @@ def approx_delta_entropy(
         # variables that are going to store the results
         len_h = h.shape[0]
         imax = y.shape[0]
-        p_y = np.zeros((len_h,imax), dtype=y.dtype)
+        p_y = np.zeros((len_h, imax), dtype=y.dtype)
         for h_i in range(len_h):
             h0 = h[h_i]
             zm = d / h0
             zm = sumexp(-0.5 * zm**2)
-            p_y[h_i,:] = zm
+            p_y[h_i, :] = zm
 
     else:
         z = d / h
