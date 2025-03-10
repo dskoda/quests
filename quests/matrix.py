@@ -6,7 +6,7 @@ import numpy as np
 
 @nb.njit(fastmath=True)
 def sum_positive(X):
-    """sum only positive terms, optimized for numba. 
+    """sum only positive terms, optimized for numba.
         Can lead to numerical instabilities, but it's really fast.
 
     Arguments:
@@ -37,7 +37,7 @@ def sumexp(X):
             summation will happen over the axis 1.
 
     Returns:
-        sumexp (np.ndarray): (N,) matrix is sum(exp(X), axis=1)
+        sumexp (np.ndarray): (M,) matrix is sum(exp(X), axis=1)
     """
     result = np.empty(X.shape[0], dtype=X.dtype)
     for i in range(X.shape[0]):
@@ -98,8 +98,8 @@ def norm(A):
         A (np.ndarray): an (N,d) matrix
 
     Returns:
-        norm_A (np.ndarray): a (d,) vector of norms of rows of A
-    """ 
+        norm_A (np.ndarray): a (N,) vector of norms of rows of A
+    """
     norm_A = np.empty(A.shape[0], dtype=A.dtype)
     for i in range(A.shape[0]):
         _sum = 0.0
@@ -120,7 +120,7 @@ def cdist(A, B, norm_A=None, norm_B=None):
         B (np.ndarray): an (M, d2) float matrix with the descriptors
 
     Returns:
-        dist (np.ndarray): a (N,M) float matrix of the
+        dist (np.ndarray): a (N, M) float matrix of the
                             distances between the descriptors.
     """
     # Computing the dot product
@@ -155,7 +155,7 @@ def cdist_Linf(A, B):
         B (np.ndarray): an (M, d) matrix with the descriptors
 
     Returns:
-        dist (np.ndarray): distance matrix
+        dist (np.ndarray): (N, M) distance matrix
     """
     # Computing the dot product
     M = A.shape[0]
