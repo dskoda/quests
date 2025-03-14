@@ -1,5 +1,7 @@
 # QUESTS: Quick Uncertainty and Entropy via STructural Similarity
 
+[![Code](https://zenodo.org/badge/760951897.svg)](https://doi.org/10.5281/zenodo.15025957)
+
 QUESTS provides model-free uncertainty and entropy estimation methods for interatomic potentials.
 Among the methods, we propose a structural descriptor based on k-nearest neighbors that:
 
@@ -212,6 +214,15 @@ Please run this script only after following the installation instructions.
 
 This first example reproduces the first part of Fig. 2c of the manuscript.
 Computing the entropies takes a few minutes on a MacBook Pro M3 with 16 threads (default used by numba).
+
+
+### Manuscript data
+
+Data and notebooks to reproduce the results from the paper are available on Zenodo and GitHub at the following links:
+
+
+- Data: [![Data](https://zenodo.org/badge/DOI/10.5281/zenodo.15025644.svg)](https://doi.org/10.5281/zenodo.15025644)
+- Notebooks: [GitHub](https://github.com/digital-synthesis-lab/2025-quests-data) [![DOI](https://zenodo.org/badge/947665775.svg)](https://doi.org/10.5281/zenodo.15026064)
 
 ### Citing
 
