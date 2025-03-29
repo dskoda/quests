@@ -102,11 +102,11 @@ def diversity(
         return np.sum(1 / p_x)
 
 
-def entropy_and_diversity(
+def get_all_metrics(
     x: np.ndarray,
     h: Union[float, List[float]] = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,
-) -> Tuple(float, float):
+) -> Tuple(float, float, List[float]):
     """Computes the entropy and diversity of a dataset `x`. This function is
         slightly faster than computing them separately, as one computes p(x)
         only once instead of twice.
@@ -120,13 +120,14 @@ def entropy_and_diversity(
     Returns:
         entropy (float): entropy of the dataset given by `x`.
         diversity (float): diversity of the dataset given by `x`.
+        dH (np.ndarray): an (M,) vector of differential entropy dH ( X | X )
     """
     N = x.shape[0]
     p_x = kernel_sum(x, x, h=h, batch_size=batch_size)
+    dH = -np.log(p_x)
     div = np.sum(1 / p_x)
     ent = -np.mean(np.log(p_x / N))
-
-    return ent, div
+    return ent, div, dH
 
 
 @nb.njit(fastmath=True, parallel=True, cache=True)
