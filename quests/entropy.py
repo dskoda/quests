@@ -1,5 +1,5 @@
 import math
-from typing import List, Union
+from typing import List, Tuple, Union
 
 import numba as nb
 import numpy as np
@@ -100,6 +100,33 @@ def diversity(
     else:
         p_x = kernel_sum(x, x, h=h, batch_size=batch_size)
         return np.sum(1 / p_x)
+
+
+def entropy_and_diversity(
+    x: np.ndarray,
+    h: Union[float, List[float]] = DEFAULT_BANDWIDTH,
+    batch_size: int = DEFAULT_BATCH,
+) -> Tuple(float, float):
+    """Computes the entropy and diversity of a dataset `x`. This function is
+        slightly faster than computing them separately, as one computes p(x)
+        only once instead of twice.
+
+    Arguments:
+        x (np.ndarray): an (N, d) matrix with the descriptors of the dataset
+        h (int or np.nadarray): bandwidth (value / vector) for the Gaussian kernel
+        batch_size (int): maximum batch size to consider when
+            performing a distance calculation.
+
+    Returns:
+        entropy (float): entropy of the dataset given by `x`.
+        diversity (float): diversity of the dataset given by `x`.
+    """
+    N = x.shape[0]
+    p_x = kernel_sum(x, x, h=h, batch_size=batch_size)
+    div = np.sum(1 / p_x)
+    ent = -np.mean(np.log(p_x / N))
+
+    return ent, div
 
 
 @nb.njit(fastmath=True, parallel=True, cache=True)
