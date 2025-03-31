@@ -6,15 +6,15 @@ import numpy as np
 
 @nb.njit(fastmath=True)
 def sum_positive(X):
-    """sumexp optimized for numba. Can lead to numerical
-        instabilities, but it's really fast.
+    """sum only positive terms, optimized for numba.
+        Can lead to numerical instabilities, but it's really fast.
 
     Arguments:
         X (np.ndarray): an (N, d) matrix with the values. The
             summation will happen over the axis 1.
 
     Returns:
-        sumexp (np.ndarray): sum(exp(X), axis=1)
+        sumexp (np.ndarray): (d,) matrix is sum(max(X,0), axis=1)
     """
     result = np.empty(X.shape[0], dtype=X.dtype)
     for i in range(X.shape[0]):
@@ -33,11 +33,11 @@ def sumexp(X):
         instabilities, but it's really fast.
 
     Arguments:
-        X (np.ndarray): an (N, d) matrix with the values. The
+        X (np.ndarray): an (M, N) matrix with the values. The
             summation will happen over the axis 1.
 
     Returns:
-        sumexp (np.ndarray): sum(exp(X), axis=1)
+        sumexp (np.ndarray): (M,) matrix is sum(exp(X), axis=1)
     """
     result = np.empty(X.shape[0], dtype=X.dtype)
     for i in range(X.shape[0]):
@@ -56,9 +56,9 @@ def wsumexp(X, w):
         variable and can be unstable, but it's really fast.
 
     Arguments:
-        X (np.ndarray): an (N, d) matrix with the values. The
+        X (np.ndarray): an (M, N) matrix with the values. The
             summation will happen over the axis 1.
-        w (np.ndarray): a (d, ) vector with the weights.
+        w (np.ndarray): a (N, ) vector with the weights.
 
     Returns:
         wsumexp (np.ndarray): sum(w * exp(X), axis=1)
@@ -92,6 +92,14 @@ def logsumexp(X):
 
 @nb.njit(fastmath=True)
 def norm(A):
+    """Norm calculation
+
+    Arguments:
+        A (np.ndarray): an (N,d) matrix
+
+    Returns:
+        norm_A (np.ndarray): a (N,) vector of norms of rows of A
+    """
     norm_A = np.empty(A.shape[0], dtype=A.dtype)
     for i in range(A.shape[0]):
         _sum = 0.0
@@ -108,11 +116,12 @@ def cdist(A, B, norm_A=None, norm_B=None):
     """Optimized distance calculation using numba.
 
     Arguments:
-        A (np.ndarray): an (N, d) matrix with the descriptors
-        B (np.ndarray): an (M, d) matrix with the descriptors
+        A (np.ndarray): an (N, d1) float matrix with the descriptors
+        B (np.ndarray): an (M, d2) float matrix with the descriptors
 
     Returns:
-        dist (float): entropy of the dataset given by `x`.
+        dist (np.ndarray): a (N, M) float matrix of the
+                            distances between the descriptors.
     """
     # Computing the dot product
     dist = np.dot(A, B.T)
@@ -146,7 +155,7 @@ def cdist_Linf(A, B):
         B (np.ndarray): an (M, d) matrix with the descriptors
 
     Returns:
-        dist (np.ndarray): distance matrix
+        dist (np.ndarray): (N, M) distance matrix
     """
     # Computing the dot product
     M = A.shape[0]
