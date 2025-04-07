@@ -14,6 +14,7 @@ def perfect_entropy(
     x: torch.tensor,
     h: float = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,
+    device: str = "cpu"
 ):
     """Computes the perfect entropy of a dataset using a batch distance
         calculation. This is necessary because the full distance matrix
@@ -31,7 +32,7 @@ def perfect_entropy(
         entropy (float): entropy of the dataset given by `x`.
     """
     N = x.shape[0]
-    p_x = kernel_sum(x, x, h=h, batch_size=batch_size)
+    p_x = kernel_sum(x, x, h=h, batch_size=batch_size, device=device)
 
     # normalizes the p(x) prior to the log for numerical stability
     p_x = torch.log(p_x / N)
@@ -44,6 +45,7 @@ def delta_entropy(
     y: torch.tensor,
     h: float = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,
+    device: str = "cpu"
 ):
     """Computes the differential entropy of a dataset `x` using the dataset
         `y` as reference. This function can be SLOW, despite the optimization
@@ -59,7 +61,7 @@ def delta_entropy(
     Returns:
         entropy (float): entropy of the dataset given by `x`.
     """
-    p_x = kernel_sum(x, y, h=h, batch_size=batch_size)
+    p_x = kernel_sum(x, y, h=h, batch_size=batch_size, device=device)
     return -torch.log(p_x)
 
 
@@ -67,6 +69,7 @@ def diversity(
     x: torch.tensor,
     h: float = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,
+    device: str = "cpu"
 ):
     """Computes the diversity of a dataset `x` by assuming a sum over the
         inverse p(x). This approximates the number of unique data points
@@ -81,7 +84,7 @@ def diversity(
     Returns:
         entropy (float): entropy of the dataset given by `x`.
     """
-    p_x = kernel_sum(x, x, h=h, batch_size=batch_size)
+    p_x = kernel_sum(x, x, h=h, batch_size=batch_size, device=device)
     return torch.sum(1 / p_x)
 
 
@@ -90,6 +93,7 @@ def kernel_sum(
     y: torch.tensor,
     h: float = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,
+    device: str = "cpu"
 ):
     """Computes the kernel matrix K_ij for the descriptors x_i and y_j.
         Because the entire matrix cannot fit in the memory, this function
@@ -108,6 +112,8 @@ def kernel_sum(
         ki (torch.tensor): a (M,) vector containing the probability of x_i
             given `y`
     """
+    device = torch.device(device)
+
     M = x.shape[0]
     max_step_x = math.ceil(M / batch_size)
 
@@ -119,27 +125,27 @@ def kernel_sum(
     norm_y = norm(y)
 
     # variables that are going to store the results
-    p_x = torch.zeros(M, dtype=x.dtype, device=x.device)
+    p_x = torch.zeros(M, dtype=x.dtype)
 
     # loops over rows and columns
     for step_x in range(0, max_step_x):
         i = step_x * batch_size
         imax = min(i + batch_size, M)
-        x_batch = x[i:imax]
-        x_batch_norm = norm_x[i:imax]
+        x_batch = x[i:imax].to(device)
+        x_batch_norm = norm_x[i:imax].to(device)
 
         # loops over all columns in batches to prevent memory overflow
         for step_y in range(0, max_step_y):
             j = step_y * batch_size
             jmax = min(j + batch_size, N)
-            y_batch = y[j:jmax]
-            y_batch_norm = norm_y[j:jmax]
+            y_batch = y[j:jmax].to(device)
+            y_batch_norm = norm_y[j:jmax].to(device)
 
             # computing the estimated probability distribution for the batch
             z = cdist(x_batch, y_batch, x_batch_norm, y_batch_norm)
             z = z / h
             z = sumexp(-0.5 * (z**2))
 
-            p_x[i:imax] = p_x[i:imax] + z
+            p_x[i:imax] = p_x[i:imax] + z.to("cpu")
 
     return p_x
