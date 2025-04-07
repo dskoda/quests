@@ -106,7 +106,7 @@ def get_all_metrics(
     x: np.ndarray,
     h: Union[float, List[float]] = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,
-) -> Tuple(float, float, List[float]):
+):
     """Computes the entropy and diversity of a dataset `x`. This function is
         slightly faster than computing them separately, as one computes p(x)
         only once instead of twice.
