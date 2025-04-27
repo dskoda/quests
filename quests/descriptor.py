@@ -410,6 +410,7 @@ def get_descriptors_multicomponent(
             species += list(set(atoms.get_chemical_symbols()))
         species = list(set(species))
 
+    species = sorted(species)
     n_species = len(species)
             
     x1, x2 = [], []
@@ -421,6 +422,7 @@ def get_descriptors_multicomponent(
         _x1.append(full_x1)
         _x2.append(full_x2)
 
+        # descriptors on a per-species are only A-A, B-B type of interactions
         if n_species > 1:
             symbols = atoms.get_chemical_symbols()
             for sp in species:
@@ -448,6 +450,7 @@ def get_descriptors_multicomponent(
     x1 = x1.astype(dtype)
     x2 = x2.astype(dtype)
 
+    # sort the descriptors to obtain (x1, x2) pairs in a per-species manner
     if concat:
         if n_species == 1:
             return np.concatenate([x1, x2], axis=1)
