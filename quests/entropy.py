@@ -131,6 +131,74 @@ def get_all_metrics(
 
 
 @nb.njit(fastmath=True, parallel=True, cache=True)
+def find_equal(
+    x: np.ndarray,
+    y: np.ndarray,
+    batch_size: int = DEFAULT_BATCH,
+    eps: float = 1e-5,
+):
+    """Find the data points in x corresponding to those in y.
+        Because the entire matrix cannot fit in the memory, this function
+        performs the calculations in batches.
+
+    Arguments:
+        x (np.ndarray): an (M, d) matrix with the test descriptors
+        y (np.ndarray): an (N, d) matrix with the reference descriptors
+        batch_size (int): maximum batch size to consider when
+            performing a distance calculation.
+        eps (float): threshold to consider points as equal.
+
+    Returns:
+        idx (np.ndarray): a (N,) vector containing the indices of the
+            rows of `x` corresponding to the rows of `y`.
+    """
+    M = x.shape[0]
+    max_step_x = math.ceil(M / batch_size)
+
+    N = y.shape[0]
+    max_step_y = math.ceil(N / batch_size)
+
+    # precomputing the norms saves us some time
+    norm_x = norm(x)
+    norm_y = norm(y)
+
+    # variables that are going to store the results
+    idx = np.full(N, -1, dtype=nb.int64)
+
+    # loops over rows and columns to compute the
+    # distance matrix without keeping it entirely
+    # in the memory
+    for step_x in nb.prange(0, max_step_x):
+        i = step_x * batch_size
+        imax = min(i + batch_size, M)
+        x_batch = x[i:imax]
+        x_batch_norm = norm_x[i:imax]
+
+        # loops over all columns in batches to prevent memory overflow
+        for step_y in range(0, max_step_y):
+            j = step_y * batch_size
+            jmax = min(j + batch_size, N)
+            y_batch = y[j:jmax]
+            y_batch_norm = norm_y[j:jmax]
+
+            # computing the distance
+            z = cdist(x_batch, y_batch, x_batch_norm, y_batch_norm)
+
+            # find the index
+            for kj in range(j, jmax):
+                # skip the comparison if we already found one equivalent
+                if idx[kj] > -1:
+                    continue
+
+                # compares all rows with all columns
+                for ki in range(i, imax):
+                    if z[ki - i, kj - j] < eps:
+                        idx[kj] = ki
+
+    return idx
+
+
+@nb.njit(fastmath=True, parallel=True, cache=True)
 def kernel_sum(
     x: np.ndarray,
     y: np.ndarray,
