@@ -11,6 +11,33 @@ DEFAULT_GRAPH_NBRS = 10
 
 
 def perfect_entropy(
+    x: np.ndarray,
+    h: Union[float, List[float]] = DEFAULT_BANDWIDTH,
+    batch_size: int = DEFAULT_BATCH,
+    device: str = "cpu"
+):
+    """Deprecated. Please use `entropy`.
+
+    Computes the perfect entropy of a dataset using a batch distance
+        calculation. This is necessary because the full distance matrix
+        often does not fit in the memory for a big dataset. This function
+        can be SLOW, despite the optimization of the computation, as it
+        does not approximate the results.
+
+    Arguments:
+        x (np.ndarray): an (N, d) matrix with the descriptors
+        h (int or np.nadarray): bandwidth (value / vector) for the Gaussian kernel
+        batch_size (int): maximum batch size to consider when
+            performing a distance calculation.
+
+    Returns:
+        entropy (float): entropy of the dataset given by `x`.
+            or (np.ndarray): if 'h' is a vector
+    """
+    return entropy(x, h, batch_size, device=device)
+
+
+def entropy(
     x: torch.tensor,
     h: float = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,

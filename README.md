@@ -61,13 +61,13 @@ To use the QUESTS package to create descriptors and compute entropies, you can u
 ```python
 from ase.io import read
 from quests.descriptor import get_descriptors
-from quests.entropy import perfect_entropy, diversity
+from quests.entropy import entropy, diversity
 
 dset = read("dataset.xyz", index=":")
 x = get_descriptors(dset, k=32, cutoff=5.0)
 h = 0.015
 batch_size = 10000
-H = perfect_entropy(x, h=h, batch_size=batch_size)
+H = entropy(x, h=h, batch_size=batch_size)
 D = diversity(x, h=h, batch_size=batch_size)
 ```
 
@@ -131,14 +131,14 @@ Note that this constraint requires the descriptors to be generated using the tra
 import torch
 from ase.io import read
 from quests.descriptor import get_descriptors
-from quests.gpu.entropy import perfect_entropy
+from quests.gpu.entropy import entropy
 
 dset = read("dataset.xyz", index=":")
 x = get_descriptors(dset, k=32, cutoff=5.0)
 x = torch.tensor(x, device="cuda")
 h = 0.015
 batch_size = 10000
-H = perfect_entropy(x, h=h, batch_size=batch_size)
+H = entropy(x, h=h, batch_size=batch_size)
 ```
 
 #### Computing overlap between datasets
