@@ -73,6 +73,32 @@ D = diversity(x, h=h, batch_size=batch_size)
 
 In this example, descriptors are being created using 32 nearest neighbors and a 5.0 Å cutoff.
 The entropy and diversity are being computed using a Gaussian kernel (default) with bandwidth of 0.015 1/Å and batch size of 10,000.
+For multicomponent systems, see below.
+
+#### Computing descriptors for multicomponent systems
+
+As of the current version, QUESTS allow you to compute a simplified descriptor for multi-element systems.
+The descriptor is made by the concatenation of normal QUESTS descriptors, and the same descriptor computed on a per-element basis.
+For instance, for a hypothetical A-B alloy, we first compute the descriptors on a per-environment basis without regard for composition.
+Then, we compute it two more times: one considering that only atoms A exist, then later considering that only atoms B exist.
+The final descriptor is made by the concatenation of these three descriptors.
+For N elements, the final length of the descriptor is (N + 1) * k * (k + 1) / 2, where k is the number of neighbors passed as a parameter.
+
+```python
+from ase.io import read
+from quests.descriptor import get_descriptors_multicomponent
+from quests.entropy import perfect_entropy, diversity
+
+dset = read("dataset.xyz", index=":")
+species = ["Ag", "Au"]  # if not provided, species will be inferred from the dataset
+x = get_descriptors_multicomponent(dset, k=32, cutoff=5.0, species=species)
+```
+
+Like in the example before, descriptors are being created using 32 nearest neighbors and a 5.0 Å cutoff.
+Please note: as of now, the rule for the selection of the bandwidth is still being tested.
+In principle, however, all the other functions for QUESTS are still compatible with the multicomponent descriptors.
+
+⚠️ Note: This feature is under construction and is subject to change
 
 #### Computing differential entropies
 

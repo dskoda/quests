@@ -390,6 +390,8 @@ def get_descriptors_multicomponent(
         `dset` and a list of species. The computation of atom-centered descriptors is parallelized over
         the maximum number of threads set by numba.
 
+    NOTICE: This is under testing and may be subject to changes!
+
     Arguments:
         dset (List[Atoms]): dataset for which the descriptors will be computed.
         k (int): number of nearest neighbors to use when computing descriptors.
@@ -412,7 +414,7 @@ def get_descriptors_multicomponent(
 
     species = sorted(species)
     n_species = len(species)
-            
+
     x1, x2 = [], []
     for atoms in dset:
         _x1, _x2 = [], []
