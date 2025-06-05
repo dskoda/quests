@@ -255,12 +255,15 @@ Data and notebooks to reproduce the results from the paper are available on Zeno
 If you use QUESTS in a publication, please cite the following paper:
 
 ```bibtex
-@article{schwalbekoda2024information,
-    title = {Model-free quantification of completeness, uncertainties, and outliers in atomistic machine learning using information theory},
+@article{schwalbekoda2025information,
+    title = {Model-free estimation of completeness, uncertainties, and outliers in atomistic machine learning using information theory},
     author = {Schwalbe-Koda, Daniel and Hamel, Sebastien and Sadigh, Babak and Zhou, Fei and Lordi, Vincenzo},
-    year = {2024},
-    journal = {arXiv:2404.12367},
-    url = {https://arxiv.org/abs/2404.12367},
+    year = {2025},
+    journal = {Nature Communications},
+    url = {https://doi.org/10.1038/s41467-025-59232-0},
+    doi = {10.1038/s41467-025-59232-0},
+    volume={16},
+    pages={4014},
 }
 ```
 ## License
