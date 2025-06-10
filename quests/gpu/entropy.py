@@ -1,6 +1,7 @@
 import math
 
 import torch
+import numpy as np
 
 from .matrix import cdist, norm, sum_positive, sumexp, wsumexp
 
