@@ -61,13 +61,13 @@ To use the QUESTS package to create descriptors and compute entropies, you can u
 ```python
 from ase.io import read
 from quests.descriptor import get_descriptors
-from quests.entropy import perfect_entropy, diversity
+from quests.entropy import entropy, diversity
 
 dset = read("dataset.xyz", index=":")
 x = get_descriptors(dset, k=32, cutoff=5.0)
 h = 0.015
 batch_size = 10000
-H = perfect_entropy(x, h=h, batch_size=batch_size)
+H = entropy(x, h=h, batch_size=batch_size)
 D = diversity(x, h=h, batch_size=batch_size)
 ```
 
@@ -131,14 +131,14 @@ Note that this constraint requires the descriptors to be generated using the tra
 import torch
 from ase.io import read
 from quests.descriptor import get_descriptors
-from quests.gpu.entropy import perfect_entropy
+from quests.gpu.entropy import entropy
 
 dset = read("dataset.xyz", index=":")
 x = get_descriptors(dset, k=32, cutoff=5.0)
 x = torch.tensor(x, device="cuda")
 h = 0.015
 batch_size = 10000
-H = perfect_entropy(x, h=h, batch_size=batch_size)
+H = entropy(x, h=h, batch_size=batch_size)
 ```
 
 #### Computing overlap between datasets
@@ -229,12 +229,15 @@ Data and notebooks to reproduce the results from the paper are available on Zeno
 If you use QUESTS in a publication, please cite the following paper:
 
 ```bibtex
-@article{schwalbekoda2024information,
-    title = {Model-free quantification of completeness, uncertainties, and outliers in atomistic machine learning using information theory},
+@article{schwalbekoda2025information,
+    title = {Model-free estimation of completeness, uncertainties, and outliers in atomistic machine learning using information theory},
     author = {Schwalbe-Koda, Daniel and Hamel, Sebastien and Sadigh, Babak and Zhou, Fei and Lordi, Vincenzo},
-    year = {2024},
-    journal = {arXiv:2404.12367},
-    url = {https://arxiv.org/abs/2404.12367},
+    year = {2025},
+    journal = {Nature Communications},
+    url = {https://doi.org/10.1038/s41467-025-59232-0},
+    doi = {10.1038/s41467-025-59232-0},
+    volume={16},
+    pages={4014},
 }
 ```
 ## License
@@ -247,6 +250,6 @@ SPDX: BSD-3-Clause
 
 ## Acknowledgements
 
-This work was initially produced under the auspices of the U.S. Department of Energy by Lawrence Livermore National Laboratory under Contract DE-AC52-07NA27344, with support from LLNL's LDRD program under tracking codes 22-ERD-055 and 23-SI-006.
+This software package was initially produced under the auspices of the U.S. Department of Energy by Lawrence Livermore National Laboratory under Contract DE-AC52-07NA27344, with support from LLNL's LDRD program under tracking codes 22-ERD-055 and 23-SI-006.
 
 Code released as LLNL-CODE-858914
