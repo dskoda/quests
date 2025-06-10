@@ -2,6 +2,7 @@ import math
 
 import torch
 import numpy as np
+from typing import Union, List
 
 from .matrix import cdist, norm, sum_positive, sumexp, wsumexp
 
