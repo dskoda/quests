@@ -123,9 +123,9 @@ def compress(
     logger("Computing metrics...")
 
     with Timer() as t:
-        comp_H = compressor.entropy(selected)
-        comp_D = compressor.diversity(selected)
-        overlap = compressor.overlap(selected)
+        comp_H = float(compressor.entropy(selected))
+        comp_D = float(compressor.diversity(selected))
+        overlap = float(compressor.overlap(selected))
         orig_structs = len(dset)
         comp_structs = len(selected)
         orig_envs = sum([len(at) for at in dset])
@@ -162,7 +162,7 @@ def compress(
         "comp_n_structs": comp_structs,
         "comp_n_envs": comp_envs,
         "overlap": overlap,
-        "selected": selected,
+        "selected": [int(i) for i in selected],
     }
     with open(output, "w") as f:
         json.dump(results, f, indent=4)
