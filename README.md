@@ -206,6 +206,42 @@ This will compute the learning curve for fractions 0.2, 0.4, 0.6, and 0.8, runni
 
 The resulting JSON file will contain detailed information about the learning curve, including the entropy values for each fraction and run, as well as the mean and standard deviation of the entropy for each fraction.
 
+#### Compressing datasets with information theory
+
+To compress an atomistic dataset, you can use the `compress` command-line interface or the API:
+
+```bash
+quests compress dataset.xyz -m msc -s 0.5 -o results.json
+```
+
+This command will compress the dataset using the `msc` method, creating a target dataset with 50% of the size of the original, and saving the metrics and indices of the downselected structures to the `results.json` file.
+If you specify an xyz file as an output, it will instead directly generate the dataset.
+
+Using the API with the traditional QUESTS descriptor:
+
+```python
+from ase.io import read
+from quests.compress import DatasetCompressor
+
+dset = read("dataset.xyz", index=":")
+
+k, cutoff = 32, 5.0
+
+h = 0.015  # bandwidth
+
+compressor = DatasetCompressor(dset, bandwidth=h)
+
+# gets the indices of the structures in the dataset to reduce it to
+# 50% of its size using the method `msc`.
+# Available methods: `random`, `mean_fps`, `fps`, `k_means`, `msc`
+selected = compressor.get_indices(method="msc", size=0.5)
+
+# afterwards, one can use the selected indices to obtain the information
+# theoretical metrics about the compressed dataset:
+summary = compressor.get_summary(selected)
+print(summary)
+```
+
 ### Demonstration
 
 One example demonstrating the use of QUESTS for computing the entropy of the Carbon GAP-20 dataset is provided under the folder `examples`.
