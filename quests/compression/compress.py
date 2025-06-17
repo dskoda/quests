@@ -1,12 +1,16 @@
-from collections import defaultdict
-from typing import Callable, List, Tuple
+from typing import Callable, List
 
 import numpy as np
-import ray
 from ase import Atoms
 from bayes_opt import BayesianOptimization
 from quests.descriptor import get_descriptors
-from quests.entropy import DEFAULT_BANDWIDTH, DEFAULT_BATCH, diversity, perfect_entropy, delta_entropy
+from quests.entropy import (
+    DEFAULT_BANDWIDTH,
+    DEFAULT_BATCH,
+    diversity,
+    entropy,
+    delta_entropy,
+)
 
 from .baseline import k_means, mean_fps, random_sample
 from .fps import fps, msc
@@ -40,10 +44,7 @@ class DatasetCompressor:
         self.batch_size = batch_size
         self._descriptors = [descriptor_fn(at) for at in dset]
         self._entropies = np.array(
-            [
-                perfect_entropy(x, h=bandwidth, batch_size=batch_size)
-                for x in self._descriptors
-            ]
+            [entropy(x, h=bandwidth, batch_size=batch_size) for x in self._descriptors]
         )
 
     def entropy(self, selected: List[int] = None):
@@ -52,7 +53,7 @@ class DatasetCompressor:
         else:
             data = np.concatenate([self._descriptors[i] for i in selected], axis=0)
 
-        return perfect_entropy(data, h=self.bandwidth, batch_size=self.batch_size)
+        return entropy(data, h=self.bandwidth, batch_size=self.batch_size)
 
     def diversity(self, selected: List[int] = None):
         if selected is None:

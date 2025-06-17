@@ -120,7 +120,7 @@ def compress(
     compress_time = t.time
 
     logger(f"Compressed dataset in {format_time(compress_time)}")
-    logger(f"Computing metrics...")
+    logger("Computing metrics...")
 
     with Timer() as t:
         comp_H = compressor.entropy(selected)
@@ -155,8 +155,6 @@ def compress(
         "jobs": jobs,
         "compress_time": compress_time,
         "metrics_time": metrics_time,
-        "orig_H": orig_H,
-        "orig_D": orig_D,
         "orig_n_structs": orig_structs,
         "orig_n_envs": orig_envs,
         "comp_H": comp_H,
