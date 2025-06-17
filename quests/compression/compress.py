@@ -36,13 +36,13 @@ class DatasetCompressor:
         self.dset = dset
 
         if descriptor_fn is None:
-            self.descriptor_fn = lambda _data: get_descriptors(_data)
+            self.descriptor_fn = lambda _data: get_descriptors([_data])
         else:
             self.descriptor_fn = descriptor_fn
 
         self.bandwidth = bandwidth
         self.batch_size = batch_size
-        self._descriptors = [descriptor_fn(at) for at in dset]
+        self._descriptors = [self.descriptor_fn(at) for at in dset]
         self._entropies = np.array(
             [entropy(x, h=bandwidth, batch_size=batch_size) for x in self._descriptors]
         )
@@ -53,7 +53,7 @@ class DatasetCompressor:
         else:
             data = np.concatenate([self._descriptors[i] for i in selected], axis=0)
 
-        return entropy(data, h=self.bandwidth, batch_size=self.batch_size)
+        return float(entropy(data, h=self.bandwidth, batch_size=self.batch_size))
 
     def diversity(self, selected: List[int] = None):
         if selected is None:
@@ -61,7 +61,7 @@ class DatasetCompressor:
         else:
             data = np.concatenate([self._descriptors[i] for i in selected], axis=0)
 
-        return diversity(data, h=self.bandwidth, batch_size=self.batch_size)
+        return float(diversity(data, h=self.bandwidth, batch_size=self.batch_size))
 
     def overlap(self, selected: List[int] = None):
         if selected is None:
@@ -71,7 +71,26 @@ class DatasetCompressor:
         full = np.concatenate(self._descriptors, axis=0)
 
         dH = delta_entropy(full, data, h=self.bandwidth, batch_size=self.batch_size)
-        return (dH < EPSILON).mean()
+        return float((dH < EPSILON).mean())
+
+    def num_envs(self, selected: List[int] = None) -> int:
+        if selected is None:
+            selected = range(len(self.dset))
+
+        return sum([len(self.dset[i]) for i in selected])
+
+    def get_summary(self, selected: List[int] = None):
+        size = self.dataset_size
+
+        return {
+            "entropy": self.entropy(selected),
+            "diversity": self.diversity(selected),
+            "overlap": self.overlap(selected),
+            "original_size": size,
+            "compressed_size": len(selected) if selected is not None else size,
+            "original_envs": self.num_envs(),
+            "compressed_envs": self.num_envs(selected)
+        }
 
     @property
     def dataset_size(self):
