@@ -68,7 +68,12 @@ def norm(A: torch.Tensor) -> torch.Tensor:
     return torch.sum(A * A, dim=1)
 
 
-def cdist(A: torch.Tensor, B: torch.Tensor, norm_A: Optional[torch.Tensor] = None, norm_B: Optional[torch.Tensor] = None) -> torch.Tensor:
+def cdist(
+    A: torch.Tensor,
+    B: torch.Tensor,
+    norm_A: Optional[torch.Tensor] = None,
+    norm_B: Optional[torch.Tensor] = None,
+) -> torch.Tensor:
     """
     Compute the pairwise Euclidean distance between two sets of vectors.
 
