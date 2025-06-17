@@ -1,8 +1,6 @@
 import json
 import os
-import random
 import sys
-import time
 
 import click
 import numba as nb
@@ -14,7 +12,6 @@ from quests.descriptor import DEFAULT_CUTOFF, DEFAULT_K, get_descriptors
 from quests.entropy import DEFAULT_BANDWIDTH, DEFAULT_BATCH
 from quests.tools.time import Timer
 
-from .load_file import descriptors_from_file
 from .log import format_time, logger
 
 
