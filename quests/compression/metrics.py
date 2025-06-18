@@ -1,7 +1,7 @@
 from typing import List
 
 import numpy as np
-from quests.entropy import kernel_sum, DEFAULT_BANDWIDTH, DEFAULT_BATCH
+from quests.entropy import DEFAULT_BANDWIDTH, DEFAULT_BATCH, kernel_sum
 
 
 def sequential_px(
@@ -53,24 +53,20 @@ def sequential_metrics(
     h: float = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,
 ) -> List[dict]:
-    all_px = sequential_px(
-        descriptors,
-        selected,
-        h=h,
-        batch_size=batch_size
-    )
+    all_px = sequential_px(descriptors, selected, h=h, batch_size=batch_size)
 
     results = []
     for i, p_x in enumerate(all_px):
-        x = np.concatenate([
-            descriptors[n]
-            for n in selected[:i + 1]
-        ])
+        x = np.concatenate([descriptors[n] for n in selected[: i + 1]])
         N = x.shape[0]
 
-        results.append({
-            "entropy": float(-np.mean(np.log(p_x / N))),
-            "diversity": float(np.log(np.sum(1 / p_x))),
-        })
+        results.append(
+            {
+                "n_envs": len(p_x),
+                "n_structs": i + 1,
+                "entropy": float(-np.mean(np.log(p_x / N))),
+                "diversity": float(np.log(np.sum(1 / p_x))),
+            }
+        )
 
     return results
