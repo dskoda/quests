@@ -337,7 +337,7 @@ def get_descriptors(
     k: int = DEFAULT_K,
     cutoff: float = DEFAULT_CUTOFF,
     concat: bool = True,
-    dtype: str = "float32",
+    dtype: str = "float64",
 ):
     """Computes the default representation for the QUESTS approach given a dataset
         `dset`. The computation of atom-centered descriptors is parallelized over

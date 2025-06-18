@@ -10,6 +10,7 @@ from quests.cli.overlap import overlap
 from quests.cli.learning_curve import learning_curve
 from quests.cli.mcmc import mcmc
 from quests.cli.active_learning import active_learning
+from quests.cli.compress import compress
 
 
 class QuestsGroup(click.Group):
@@ -31,6 +32,7 @@ quests.add_command(overlap)
 quests.add_command(learning_curve)
 quests.add_command(mcmc)
 quests.add_command(active_learning)
+quests.add_command(compress)
 
 
 if __name__ == "__main__":

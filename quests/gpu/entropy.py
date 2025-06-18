@@ -1,6 +1,8 @@
 import math
 
 import torch
+import numpy as np
+from typing import Union, List
 
 from .matrix import cdist, norm, sum_positive, sumexp, wsumexp
 
@@ -14,7 +16,7 @@ def perfect_entropy(
     x: np.ndarray,
     h: Union[float, List[float]] = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,
-    device: str = "cpu"
+    device: str = "cpu",
 ):
     """Deprecated. Please use `entropy`.
 
@@ -41,7 +43,7 @@ def entropy(
     x: torch.tensor,
     h: float = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,
-    device: str = "cpu"
+    device: str = "cpu",
 ):
     """Computes the perfect entropy of a dataset using a batch distance
         calculation. This is necessary because the full distance matrix
@@ -72,7 +74,7 @@ def delta_entropy(
     y: torch.tensor,
     h: float = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,
-    device: str = "cpu"
+    device: str = "cpu",
 ):
     """Computes the differential entropy of a dataset `x` using the dataset
         `y` as reference. This function can be SLOW, despite the optimization
@@ -96,7 +98,7 @@ def diversity(
     x: torch.tensor,
     h: float = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,
-    device: str = "cpu"
+    device: str = "cpu",
 ):
     """Computes the diversity of a dataset `x` by assuming a sum over the
         inverse p(x). This approximates the number of unique data points
@@ -120,7 +122,7 @@ def kernel_sum(
     y: torch.tensor,
     h: float = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,
-    device: str = "cpu"
+    device: str = "cpu",
 ):
     """Computes the kernel matrix K_ij for the descriptors x_i and y_j.
         Because the entire matrix cannot fit in the memory, this function

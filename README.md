@@ -3,14 +3,15 @@
 [![Code](https://zenodo.org/badge/760951897.svg)](https://doi.org/10.5281/zenodo.15025957)
 
 QUESTS provides model-free uncertainty and entropy estimation methods for interatomic potentials.
-Among the methods, we propose a structural descriptor based on k-nearest neighbors that:
+Among the methods, we propose a structural descriptor and information-theoretical strategy that:
 
 1. Is fast to compute, as it uses only distances between atoms within an environment.
 Because the computation of descriptors is efficiently parallelized, generation of descriptors for 1.5M environments takes about 3 seconds on 56 threads (tested against Intel Xeon CLX-8276L CPUs).
 2. Can be used to analyze datasets for atomistic machine learning, providing quantities such as dataset entropy, diversity, information gap, and others.
 3. Is shown to recover many useful properties of information theory, and can be used to inform dataset compression
+4. Has useful properties in terms of outlier detection and even some thermodynamic correlations under study!
 
-This package also contains tools to interface with other representations and packages.
+This package also contains tools to interface with other representations and packages, as described below.
 
 ## Installation
 
@@ -186,7 +187,7 @@ quests learning_curve dataset.xyz -o learning_curve_results.json
 
 This command will:
 1. Use the default fractions (0.1 to 0.9 in steps of 0.1)
-2. Compute the entropy for each fraction
+2. Compute the entropy for each fraction by randomly sampling environments
 3. Run the computation 3 times for each fraction (default value)
 4. Save the results in a JSON file named `learning_curve_results.json`
 
@@ -206,6 +207,58 @@ This will compute the learning curve for fractions 0.2, 0.4, 0.6, and 0.8, runni
 
 The resulting JSON file will contain detailed information about the learning curve, including the entropy values for each fraction and run, as well as the mean and standard deviation of the entropy for each fraction.
 
+#### Compressing datasets with information theory
+
+To compress an atomistic dataset, you can use the `compress` command-line interface or the API:
+
+```bash
+quests compress dataset.xyz -m msc -s 0.5 -o results.json
+```
+
+This command will compress the dataset using the `msc` method, creating a target dataset with 50% of the size of the original, and saving the metrics and indices of the downselected structures to the `results.json` file.
+If you specify an xyz file as an output, it will instead directly generate the dataset.
+
+Using the API with the traditional QUESTS descriptor:
+
+```python
+from ase.io import read
+from quests.compression import DatasetCompressor
+
+dset = read("dataset.xyz", index=":")
+
+# uses the default QUESTS descriptor and parameters:
+# k, cutoff, h = 32, 5.0, 0.015
+compressor = DatasetCompressor(dset)
+
+# gets the indices of the structures in the dataset to reduce it to
+# 50% of its size using the method `msc`.
+# Available methods: `random`, `mean_fps`, `fps`, `k_means`, `msc`
+selected = compressor.get_indices(method="msc", size=0.5)
+
+# afterwards, one can use the selected indices to obtain the information
+# theoretical metrics about the compressed dataset:
+summary = compressor.get_summary(selected)
+print(summary)
+```
+
+You can use another, custom-made descriptor to compress the dataset as well.
+The argument to `DatasetCompression` should be a function that takes an ASE Atoms object with N atoms and returns an `(N, d)` matrix of per-atom descriptors:
+
+```python
+from ase.io import read
+from quests.compression import DatasetCompressor
+
+dset = read("dataset.xyz", index=":")
+
+descriptor_fn = lambda atoms: your_custom_function(atoms, **kwargs)
+compressor = DatasetCompressor(dset, descriptor_fn=descriptor_fn, bandwidth=your_custom_bandwidth)
+
+selected = compressor.get_indices(method="msc", size=0.5)
+
+summary = compressor.get_summary(selected)
+print(summary)
+```
+
 ### Demonstration
 
 One example demonstrating the use of QUESTS for computing the entropy of the Carbon GAP-20 dataset is provided under the folder `examples`.
@@ -214,7 +267,6 @@ Please run this script only after following the installation instructions.
 
 This first example reproduces the first part of Fig. 2c of the manuscript.
 Computing the entropies takes a few minutes on a MacBook Pro M3 with 16 threads (default used by numba).
-
 
 ### Manuscript data
 
