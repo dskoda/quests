@@ -1,9 +1,8 @@
-import itertools
 from typing import List
 
 import numpy as np
-from quests.entropy import kernel_sum, DEFAULT_BANDWIDTH, DEFAULT_BATCH
-from quests.matrix import cdist, sumexp
+from quests.entropy import DEFAULT_BANDWIDTH, DEFAULT_BATCH, kernel_sum
+from quests.matrix import cdist
 
 
 def select_fps_greedy(dm: np.ndarray, entropies: np.ndarray) -> int:
