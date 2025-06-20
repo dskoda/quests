@@ -1,18 +1,18 @@
 import gc
 import json
 import os
+import random
 import sys
 import time
-import random
 
 import click
 import numba as nb
 import numpy as np
 from ase.io import read, write
 
-from quests.mcmc import augment_pbc, DEFAULT_TARGET
-from quests.descriptor import DEFAULT_CUTOFF, DEFAULT_K
+from quests.descriptor import DEFAULT_CUTOFF, DEFAULT_K, get_descriptors
 from quests.entropy import DEFAULT_BANDWIDTH, DEFAULT_BATCH
+from quests.mcmc import DEFAULT_TARGET, augment_pbc, augment_pbc_approx, get_index
 from quests.tools.time import Timer
 
 from .log import format_time, logger
@@ -129,13 +129,19 @@ def active_learning(
     logger("Starting active learning loop")
     new = []
     for gen in range(generations):
+        logger(f"Starting generation {gen+1}")
         with Timer() as t:
-            initial = random.sample(dset + new, k=structures)
+            ref = dset + new
+            initial = random.sample(ref, k=structures)
+
+            ref_x = get_descriptors(ref, k=nbrs, cutoff=cutoff)
+
+            index = get_index(ref_x)
 
             for at in initial:
-                best, res = augment_pbc(
+                best, res = augment_pbc_approx(
                     at,
-                    dset + new,
+                    index,
                     n_steps=n_steps,
                     target_dH=target,
                     k=nbrs,
