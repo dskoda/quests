@@ -25,14 +25,14 @@ from .log import format_time, logger
     "--structures",
     type=int,
     default=None,
-    help=f"Number of structures to sample from the reference dataset",
+    help="Number of structures to sample from the reference dataset",
 )
 @click.option(
     "-n",
     "--n_steps",
     type=int,
     default=1000,
-    help=f"Number of Monte Carlo steps (default: 1000)",
+    help="Number of Monte Carlo steps (default: 1000)",
 )
 @click.option(
     "-t",
