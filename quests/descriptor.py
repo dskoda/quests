@@ -376,3 +376,95 @@ def get_descriptors(
         return np.concatenate([x1, x2], axis=1)
 
     return x1, x2
+
+
+def get_descriptors_multicomponent(
+    dset: List[Atoms],
+    k: int = DEFAULT_K,
+    cutoff: float = DEFAULT_CUTOFF,
+    species: List[str] = None,
+    concat: bool = True,
+    dtype: str = "float32",
+):
+    """Computes the multicomponent representation for the QUESTS approach given a dataset
+        `dset` and a list of species. The computation of atom-centered descriptors is parallelized over
+        the maximum number of threads set by numba.
+
+    NOTICE: This is under testing and may be subject to changes!
+
+    Arguments:
+        dset (List[Atoms]): dataset for which the descriptors will be computed.
+        k (int): number of nearest neighbors to use when computing descriptors.
+        cutoff (float): cutoff radius for the weight function.
+        species (List[str]): list of chemical symbols to be used for the multicomponent
+            representation of QUESTS. If not given, uses all the different species in
+            the dataset `dset`.
+        concat (bool): if True, concatenates X1 and X2 column-wise and returns a
+            single matrix X.
+        dtype (str): dtype for the matrix.
+
+    Returns:
+        X (np.ndarray): matrix containing descriptors for all atoms in `dset`.
+    """
+    if species is None:
+        species = []
+        for atoms in dset:
+            species += list(set(atoms.get_chemical_symbols()))
+        species = list(set(species))
+
+    species = sorted(species)
+    n_species = len(species)
+
+    x1, x2 = [], []
+    for atoms in dset:
+        _x1, _x2 = [], []
+        full_x1, full_x2 = descriptor_pbc(
+            atoms.positions, cell=np.array(atoms.cell), k=k, cutoff=cutoff
+        )
+        _x1.append(full_x1)
+        _x2.append(full_x2)
+
+        # descriptors on a per-species are only A-A, B-B type of interactions
+        if n_species > 1:
+            symbols = atoms.get_chemical_symbols()
+            for sp in species:
+                idx = np.array([sym == sp for sym in symbols])
+                part_x1, part_x2 = descriptor_pbc(
+                    atoms.positions[idx], cell=np.array(atoms.cell), k=k, cutoff=cutoff
+                )
+                _part_x1 = np.zeros_like(full_x1)
+                _part_x2 = np.zeros_like(full_x2)
+                _part_x1[idx] = part_x1
+                _part_x2[idx] = part_x2
+
+                _x1.append(_part_x1)
+                _x2.append(_part_x2)
+
+            _x1 = np.concatenate(_x1, axis=1)
+            _x2 = np.concatenate(_x2, axis=1)
+
+        x1.append(_x1)
+        x2.append(_x2)
+
+    x1 = np.concatenate(x1)
+    x2 = np.concatenate(x2)
+
+    x1 = x1.astype(dtype)
+    x2 = x2.astype(dtype)
+
+    # sort the descriptors to obtain (x1, x2) pairs in a per-species manner
+    if concat:
+        if n_species == 1:
+            return np.concatenate([x1, x2], axis=1)
+
+        len1 = k * (n_species + 1)
+        len2 = (k - 1) * (n_species + 1)
+
+        x = []
+        for i in range(n_species + 1):
+            x.append(x1[:, i * len1 : (i + 1) * len1])
+            x.append(x2[:, i * len2 : (i + 1) * len2])
+
+        return np.concatenate(x, axis=1)
+
+    return x1, x2
