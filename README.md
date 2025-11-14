@@ -318,6 +318,20 @@ If you use QUESTS in a publication, please cite the following paper:
     pages={4014},
 }
 ```
+
+Additionally, if you use the compression algorithms implemented in this work, please cite the following paper:
+
+```bibtex
+@article{yu2025compression,
+    title = {Maximizing Efficiency of Dataset Compression for Machine Learning Potentials With Information Theory},
+    author = {Yu, Benjamin, and Lordi, Vincenzo and Schwalbe-Koda, Daniel},
+    year = {2025},
+    journal = {arXiv:2511.10561},
+    url = {https://doi.org/10.48550/arXiv.2511.10561},
+    doi = {10.48550/arXiv.2511.10561},
+}
+```
+
 ## License
 
 The QUESTS software is distributed under the following license: BSD-3
