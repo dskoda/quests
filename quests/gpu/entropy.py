@@ -149,26 +149,31 @@ def kernel_sum(
     N = y.shape[0]
     max_step_y = math.ceil(N / batch_size)
 
-    # precomputing the norms saves us some time
-    norm_x = norm(x)
-    norm_y = norm(y)
-
     # variables that are going to store the results
     p_x = torch.zeros(M, dtype=x.dtype)
+
+    # pre-computes the y batch norms to avoid redundancy
+    y_norm = torch.empty(N, dtype=y.dtype, device=device)
+
+    for step_y in range(0, max_step_y):
+        j = step_y * batch_size
+        jmax = min(j + batch_size, N)
+        y_batch = y[j:jmax].to(device)
+        y_norm[j:jmax] = norm(y_batch)
 
     # loops over rows and columns
     for step_x in range(0, max_step_x):
         i = step_x * batch_size
         imax = min(i + batch_size, M)
         x_batch = x[i:imax].to(device)
-        x_batch_norm = norm_x[i:imax].to(device)
+        x_batch_norm = norm(x_batch)
 
         # loops over all columns in batches to prevent memory overflow
         for step_y in range(0, max_step_y):
             j = step_y * batch_size
             jmax = min(j + batch_size, N)
             y_batch = y[j:jmax].to(device)
-            y_batch_norm = norm_y[j:jmax].to(device)
+            y_batch_norm = y_norm[j:jmax]
 
             # computing the estimated probability distribution for the batch
             z = cdist(x_batch, y_batch, x_batch_norm, y_batch_norm)
