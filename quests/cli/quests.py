@@ -11,6 +11,7 @@ from quests.cli.learning_curve import learning_curve
 from quests.cli.mcmc import mcmc
 from quests.cli.active_learning import active_learning
 from quests.cli.compress import compress
+from quests.cli.metrics import metrics
 
 
 class QuestsGroup(click.Group):
@@ -33,6 +34,7 @@ quests.add_command(learning_curve)
 quests.add_command(mcmc)
 quests.add_command(active_learning)
 quests.add_command(compress)
+quests.add_command(metrics)
 
 
 if __name__ == "__main__":
