@@ -115,7 +115,7 @@ def msc(
         )
 
         # compute the kernel between the remaining environments and the last one
-        remaining_kernels += kernel_sum(remaining_x, last_x)
+        remaining_kernels += kernel_sum(remaining_x, last_x, h=h, batch_size=batch_size)
 
         # now, define the value of the kernel in a greedy way, saying that the
         # kernel of a structure is equal to the furthest environment towards
