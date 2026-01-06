@@ -384,7 +384,7 @@ def get_descriptors_multicomponent(
     cutoff: float = DEFAULT_CUTOFF,
     species: List[str] = None,
     concat: bool = True,
-    dtype: str = "float32",
+    dtype: str = "float64",
 ):
     """Computes the multicomponent representation for the QUESTS approach given a dataset
         `dset` and a list of species. The computation of atom-centered descriptors is parallelized over
