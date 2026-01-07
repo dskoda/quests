@@ -20,3 +20,16 @@ def descriptors_from_file(file, k, cutoff):
     descriptor_time = t.time
 
     return x, descriptor_time
+
+
+def descriptors_from_traj(file, k, cutoff):
+    dset = read(file, index=":")
+
+    with Timer() as t:
+        x = [
+            get_descriptors([frame], k=k, cutoff=cutoff)
+            for frame in dset
+        ]
+    descriptor_time = t.time
+
+    return x, dset, descriptor_time
