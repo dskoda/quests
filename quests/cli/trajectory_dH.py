@@ -84,7 +84,7 @@ def dH_traj(
     if jobs is not None:
         nb.set_num_threads(jobs)
 
-    x, dset, _ = descriptors_from_traj(test, nbrs, cutoff)
+    x, dset, _ = descriptors_from_traj(trajectory, nbrs, cutoff)
 
     logger("Computing dH...")
     with Timer() as t:
@@ -107,10 +107,9 @@ def dH_traj(
         sys.exit()
 
     results = {
-        "reference_file": reference,
-        "test_file": test,
-        "test_envs": x.shape[0],
-        "ref_envs": ref.shape[0],
+        "file": trajectory,
+        "num_frames": len(x),
+        "num_envs": x[0].shape[0],
         "k": nbrs,
         "cutoff": cutoff,
         "bandwidth": bandwidth,
