@@ -285,6 +285,55 @@ summary = compressor.get_summary(selected)
 print(summary)
 ```
 
+#### Conditional compression with reference datasets
+
+QUESTS also supports conditional compression, which allows you to select structures that are most informative *given* a reference dataset. This is useful when you want to incrementally build a compressed dataset or select new data points that complement an existing dataset.
+
+To use conditional compression with the command-line interface:
+
+```bash
+quests compress new_data.xyz -r reference.xyz -s 100 -o results.json
+```
+
+This command will:
+1. Load the reference dataset from `reference.xyz`
+2. Select 100 structures from `new_data.xyz` that are most informative given the reference
+3. Automatically use the `msc_conditional` method
+4. Save the results to `results.json`
+
+The `-s` parameter can also be a fraction (e.g., `-s 0.3` for 30% of the dataset).
+
+Using the API for conditional compression:
+
+```python
+from ase.io import read
+from quests.compression import DatasetCompressor
+
+# Load the candidate dataset and the reference dataset
+candidates = read("new_data.xyz", index=":")
+reference = read("reference.xyz", index=":")
+
+# Create compressor for the candidate dataset
+compressor = DatasetCompressor(candidates)
+
+# Compute descriptors for the reference dataset using the same parameters
+ref_descriptors = compressor.descriptors(reference)
+
+# Select 100 structures that complement the reference dataset
+selected = compressor.get_indices(
+    method="msc_conditional",
+    size=100,
+    reference=ref_descriptors
+)
+
+# Get metrics about the combined dataset
+summary = compressor.get_summary(selected)
+print(summary)
+```
+
+The conditional compression method starts with the reference descriptors and ensures that newly selected structures provide maximal information gain relative to what is already known from the reference dataset.
+This approach is particularly useful for active learning or multi-stage compression.
+
 ### Demonstration
 
 One example demonstrating the use of QUESTS for computing the entropy of the Carbon GAP-20 dataset is provided under the folder `examples`.

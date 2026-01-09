@@ -18,6 +18,13 @@ from .log import format_time, logger
 @click.command("compress")
 @click.argument("file", required=1)
 @click.option(
+    "-r",
+    "--reference",
+    type=str,
+    default=None,
+    help="Path to a reference dataset. If provided, selects structures that complement the reference (uses msc_conditional)",
+)
+@click.option(
     "-s",
     "--size",
     type=float,
@@ -81,6 +88,7 @@ from .log import format_time, logger
 )
 def compress(
     file,
+    reference,
     size,
     method,
     cutoff,
@@ -98,6 +106,12 @@ def compress(
     if jobs is not None:
         nb.set_num_threads(jobs)
 
+    # if reference is provided, use msc_conditional
+    if reference is not None:
+        method = "msc_conditional"
+        logger(f"Reference dataset provided: {reference}")
+        logger(f"Using method: {method}")
+
     logger(f"Compressing {file} using method {method}")
 
     dset = read(file, index=":")
@@ -112,8 +126,19 @@ def compress(
     else:
         size = int(size)
 
+    # prepare kwargs for compression
+    compress_kwargs = {
+
+    }
+    if reference is not None:
+        logger(f"Loading reference dataset...")
+        ref_dset = read(reference, index=":")
+        ref_descriptors = [descriptor_fn(at) for at in ref_dset]
+        compress_kwargs["reference"] = ref_descriptors
+        logger(f"Reference dataset has {len(ref_dset)} structures")
+
     with Timer() as t:
-        selected = compressor.get_indices(method, size)
+        selected = compressor.get_indices(method, size, **compress_kwargs)
     compress_time = t.time
 
     logger(f"Compressed dataset in {format_time(compress_time)}")
@@ -145,7 +170,7 @@ def compress(
         sys.exit()
 
     results = {
-        "file": file,
+        "reference": reference,
         "k": nbrs,
         "cutoff": cutoff,
         "bandwidth": bandwidth,

@@ -13,12 +13,13 @@ from quests.entropy import (
 )
 
 from .baseline import k_means, mean_fps, random_sample
-from .fps import fps, msc
+from .fps import fps, msc, msc_conditional
 
 EPSILON = 1e-5
 METHODS = {
     "fps": fps,
     "msc": msc,
+    "msc_conditional": msc_conditional,
     "random": random_sample,
     "mean_fps": mean_fps,
     "k_means": k_means,
@@ -46,7 +47,23 @@ class DatasetCompressor:
         self._entropies = np.array(
             [entropy(x, h=bandwidth, batch_size=batch_size) for x in self._descriptors]
         )
+        
+    def descriptors(self, selected: List[int] = None):
+        if selected is None:
+            return self._descriptors
+        
+        if not isinstance(selected, list):
+            raise ValueError("selected has to be a list of indices or atoms")
 
+        if len(selected) == 0:
+            return []
+        
+        if isinstance(selected[0], Atoms):
+            return [self.descriptor_fn(at) for at in selected]
+        
+        else:
+            return [self._descriptors[i] for i in selected]
+        
     def entropy(self, selected: List[int] = None):
         if selected is None:
             data = np.concatenate(self._descriptors, axis=0)
@@ -152,7 +169,7 @@ class DatasetCompressor:
         self._check_compression_method(method)
         compress_fn = METHODS[method]
 
-        if method == "msc":
+        if method in ("msc", "msc_conditional"):
             kwargs = {
                 **kwargs,
                 "h": self.bandwidth,

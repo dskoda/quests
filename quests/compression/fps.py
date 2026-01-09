@@ -25,7 +25,7 @@ SELECT_FNS = {
 
 
 def fps(
-    descriptors: List[np.ndarray], entropies: np.ndarray, size: int, method: str = "fps"
+    descriptors: List[np.ndarray], entropies: np.ndarray, size: int, method: str = "fps", **kwargs
 ) -> List[int]:
     # select the sampling strategy
     assert method in SELECT_FNS, f"Method {method} not supported"
@@ -135,5 +135,100 @@ def msc(
         remaining_x = remaining_x[remaining_idx != selected]
         remaining_kernels = remaining_kernels[remaining_idx != selected]
         compressed.append(next_i)
+
+    return compressed
+
+
+def msc_conditional(
+    descriptors: List[np.ndarray],
+    entropies: np.ndarray,
+    size: int,
+    reference: List[np.ndarray],
+    h: float = DEFAULT_BANDWIDTH,
+    batch_size: int = DEFAULT_BATCH,
+) -> List[int]:
+    """Compresses the dataset conditionally on a reference set of descriptors.
+    
+    This function selects the most informative structures from `descriptors`
+    given that the `reference` descriptors have already been selected. This is
+    useful for incrementally building a compressed dataset or for selecting
+    new data points that complement an existing dataset.
+    
+    The algorithm initializes the kernel accumulator using the reference
+    descriptors, then iteratively selects structures that are both novel
+    (low kernel similarity to reference and already selected) and diverse
+    (high entropy).
+    
+    Args:
+        descriptors: List of descriptor arrays for candidate structures.
+        entropies: Array of entropies for each candidate structure.
+        size: Number of structures to select from the candidates.
+        reference: List of descriptor arrays from previously compressed dataset.
+        h: Bandwidth parameter for kernel computation.
+        batch_size: Batch size for kernel computation.
+    
+    Returns:
+        List of indices of the selected structures from the candidates.
+    """
+    if len(descriptors) == 0:
+        return []
+
+    if size <= 0:
+        return []
+    
+    if len(reference) == 0:
+        # if no reference is provided, fall back to standard msc
+        return msc(descriptors, entropies, size, h=h, batch_size=batch_size)
+
+    # all candidates start as remaining
+    remaining = list(range(len(descriptors)))
+    entropies = entropies.tolist()
+
+    # we will use the pre-computed descriptors for all candidates
+    remaining_x = np.concatenate([descriptors[i] for i in remaining])
+
+    # initialize the kernel accumulator using the reference descriptors
+    # this accounts for the similarity to the already compressed dataset
+    remaining_kernels = np.zeros(len(remaining_x))
+    for ref_x in reference:
+        remaining_kernels += kernel_sum(remaining_x, ref_x, h=h, batch_size=batch_size)
+
+    compressed = []
+    size = min(size, len(descriptors))
+
+    while len(compressed) < size:
+        # create matrices to track which environments belong to which structure
+        remaining_natoms = np.array([len(descriptors[i]) for i in remaining])
+
+        # this creates an array that explains which environments belong to
+        # each index in `remaining`
+        remaining_idx = np.concatenate(
+            [np.full(n, fill_value=i) for i, n in enumerate(remaining_natoms)]
+        )
+
+        # define the value of the kernel in a greedy way, saying that the
+        # kernel of a structure is equal to the furthest environment towards
+        # the entire dataset (reference + already selected)
+        per_struct_kernels = np.array(
+            [remaining_kernels[remaining_idx == n].min() for n in range(len(remaining))]
+        )
+
+        # select the environment that both maximizes the dH = -np.log(K) and
+        # is diverse enough that the entropy is large
+        per_struct_dH = -np.log(per_struct_kernels)
+        selected = (per_struct_dH + np.array(entropies)).argmax()
+
+        # update the loop and the set of compressed data
+        next_i = remaining.pop(selected)
+        entropies.pop(selected)
+        compressed.append(next_i)
+
+        # if we have more to select, update the kernels for the remaining
+        if len(compressed) < size:
+            # compute the kernel contribution from the newly selected structure
+            last_x = descriptors[next_i]
+            remaining_x = remaining_x[remaining_idx != selected]
+            remaining_kernels = remaining_kernels[remaining_idx != selected]
+            remaining_kernels += kernel_sum(remaining_x, last_x, h=h, batch_size=batch_size)
 
     return compressed
