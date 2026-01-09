@@ -153,7 +153,7 @@ class DatasetCompressor:
         self._check_compression_method(method)
         compress_fn = METHODS[method]
 
-        if method == "msc":
+        if method in ("msc", "msc_conditional"):
             kwargs = {
                 **kwargs,
                 "h": self.bandwidth,

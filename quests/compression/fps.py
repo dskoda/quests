@@ -25,7 +25,7 @@ SELECT_FNS = {
 
 
 def fps(
-    descriptors: List[np.ndarray], entropies: np.ndarray, size: int, method: str = "fps"
+    descriptors: List[np.ndarray], entropies: np.ndarray, size: int, method: str = "fps", **kwargs
 ) -> List[int]:
     # select the sampling strategy
     assert method in SELECT_FNS, f"Method {method} not supported"
