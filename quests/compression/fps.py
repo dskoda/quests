@@ -175,6 +175,10 @@ def msc_conditional(
 
     if size <= 0:
         return []
+    
+    if len(reference) == 0:
+        # if no reference is provided, fall back to standard msc
+        return msc(descriptors, entropies, size, h=h, batch_size=batch_size)
 
     # all candidates start as remaining
     remaining = list(range(len(descriptors)))

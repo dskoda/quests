@@ -13,12 +13,13 @@ from quests.entropy import (
 )
 
 from .baseline import k_means, mean_fps, random_sample
-from .fps import fps, msc
+from .fps import fps, msc, msc_conditional
 
 EPSILON = 1e-5
 METHODS = {
     "fps": fps,
     "msc": msc,
+    "msc_conditional": msc_conditional,
     "random": random_sample,
     "mean_fps": mean_fps,
     "k_means": k_means,
