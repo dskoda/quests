@@ -6,7 +6,7 @@ from quests.tools.time import Timer
 
 
 def descriptors_from_file(file, k, cutoff):
-    if file.endswith(".npz"):
+    if file.endswith(".npz") or file.endswith(".npy"):
         with Timer() as t:
             with open(file, "rb") as f:
                 x = np.load(f)
