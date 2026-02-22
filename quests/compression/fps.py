@@ -1,7 +1,7 @@
 from typing import List
 
 import numpy as np
-from quests.entropy import DEFAULT_BANDWIDTH, DEFAULT_BATCH, kernel_sum
+from quests.entropy import DEFAULT_BANDWIDTH, DEFAULT_BATCH
 from quests.matrix import cdist
 
 
@@ -25,7 +25,11 @@ SELECT_FNS = {
 
 
 def fps(
-    descriptors: List[np.ndarray], entropies: np.ndarray, size: int, method: str = "fps", **kwargs
+    descriptors: List[np.ndarray],
+    entropies: np.ndarray,
+    size: int,
+    method: str = "fps",
+    **kwargs,
 ) -> List[int]:
     # select the sampling strategy
     assert method in SELECT_FNS, f"Method {method} not supported"
@@ -68,12 +72,30 @@ def fps(
     return compressed
 
 
+def get_kernel_fn(device: str):
+    if device.lower() == "cpu":
+        from quests.entropy import kernel_sum
+
+        return kernel_sum
+
+    if "cuda" in device.lower():
+        from quests.gpu.entropy import kernel_sum
+
+        def ksum(x, y, h, batch_size):
+            return kernel_sum(x, y, h, batch_size, device=device)
+
+        return ksum
+
+    raise ValueError(f"device {device} not supported")
+
+
 def msc(
     descriptors: List[np.ndarray],
     entropies: np.ndarray,
     size: int,
     h: float = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,
+    device: str = "cpu",
 ) -> List[int]:
     """Compresses the dataset using a special algorithm that accounts for
     the novelty of each environment in each structure to the compressed
@@ -81,6 +103,8 @@ def msc(
     environment at once in the entire dataset. The compression method is
     written to avoid re-doing calculations.
     """
+
+    ksum = get_kernel_fn(device)
 
     # setting up the calculation: the initial data point is selected to be
     # the one with highest entropy (most diversity of environments)
@@ -115,7 +139,7 @@ def msc(
         )
 
         # compute the kernel between the remaining environments and the last one
-        remaining_kernels += kernel_sum(remaining_x, last_x, h=h, batch_size=batch_size)
+        remaining_kernels += ksum(remaining_x, last_x, h=h, batch_size=batch_size)
 
         # now, define the value of the kernel in a greedy way, saying that the
         # kernel of a structure is equal to the furthest environment towards
@@ -146,19 +170,20 @@ def msc_conditional(
     reference: List[np.ndarray],
     h: float = DEFAULT_BANDWIDTH,
     batch_size: int = DEFAULT_BATCH,
+    device: str = "cpu",
 ) -> List[int]:
     """Compresses the dataset conditionally on a reference set of descriptors.
-    
+
     This function selects the most informative structures from `descriptors`
     given that the `reference` descriptors have already been selected. This is
     useful for incrementally building a compressed dataset or for selecting
     new data points that complement an existing dataset.
-    
+
     The algorithm initializes the kernel accumulator using the reference
     descriptors, then iteratively selects structures that are both novel
     (low kernel similarity to reference and already selected) and diverse
     (high entropy).
-    
+
     Args:
         descriptors: List of descriptor arrays for candidate structures.
         entropies: Array of entropies for each candidate structure.
@@ -166,7 +191,7 @@ def msc_conditional(
         reference: List of descriptor arrays from previously compressed dataset.
         h: Bandwidth parameter for kernel computation.
         batch_size: Batch size for kernel computation.
-    
+
     Returns:
         List of indices of the selected structures from the candidates.
     """
@@ -175,10 +200,14 @@ def msc_conditional(
 
     if size <= 0:
         return []
-    
+
     if len(reference) == 0:
         # if no reference is provided, fall back to standard msc
-        return msc(descriptors, entropies, size, h=h, batch_size=batch_size)
+        return msc(
+            descriptors, entropies, size, h=h, batch_size=batch_size, device=device
+        )
+
+    ksum = get_kernel_fn(device)
 
     # all candidates start as remaining
     remaining = list(range(len(descriptors)))
@@ -191,7 +220,7 @@ def msc_conditional(
     # this accounts for the similarity to the already compressed dataset
     remaining_kernels = np.zeros(len(remaining_x))
     for ref_x in reference:
-        remaining_kernels += kernel_sum(remaining_x, ref_x, h=h, batch_size=batch_size)
+        remaining_kernels += ksum(remaining_x, ref_x, h=h, batch_size=batch_size)
 
     compressed = []
     size = min(size, len(descriptors))
@@ -229,6 +258,8 @@ def msc_conditional(
             last_x = descriptors[next_i]
             remaining_x = remaining_x[remaining_idx != selected]
             remaining_kernels = remaining_kernels[remaining_idx != selected]
-            remaining_kernels += kernel_sum(remaining_x, last_x, h=h, batch_size=batch_size)
+            remaining_kernels += kernel_sum(
+                remaining_x, last_x, h=h, batch_size=batch_size
+            )
 
     return compressed

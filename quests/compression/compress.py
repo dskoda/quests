@@ -33,6 +33,7 @@ class DatasetCompressor:
         descriptor_fn: Callable = None,
         bandwidth: float = DEFAULT_BANDWIDTH,
         batch_size: int = DEFAULT_BATCH,
+        device: str = "cpu",
     ):
         self.dset = dset
 
@@ -47,23 +48,25 @@ class DatasetCompressor:
         self._entropies = np.array(
             [entropy(x, h=bandwidth, batch_size=batch_size) for x in self._descriptors]
         )
-        
+        self._check_device(device)
+        self.device = device
+
     def descriptors(self, selected: List[int] = None):
         if selected is None:
             return self._descriptors
-        
+
         if not isinstance(selected, list):
             raise ValueError("selected has to be a list of indices or atoms")
 
         if len(selected) == 0:
             return []
-        
+
         if isinstance(selected[0], Atoms):
             return [self.descriptor_fn(at) for at in selected]
-        
+
         else:
             return [self._descriptors[i] for i in selected]
-        
+
     def entropy(self, selected: List[int] = None):
         if selected is None:
             data = np.concatenate(self._descriptors, axis=0)
@@ -106,12 +109,18 @@ class DatasetCompressor:
             "original_size": size,
             "compressed_size": len(selected) if selected is not None else size,
             "original_envs": self.num_envs(),
-            "compressed_envs": self.num_envs(selected)
+            "compressed_envs": self.num_envs(selected),
         }
 
     @property
     def dataset_size(self):
         return len(self.dset)
+
+    def _check_device(self, device: str):
+        assert device.lower() == "cpu" or "cuda" in device.lower(), (
+            f"Device {device} not supported."
+            + f"Acceptable values are: cpu or cuda (or cuda:x)"
+        )
 
     def _check_compression_method(self, method: str):
         assert method in METHODS, (
@@ -174,6 +183,7 @@ class DatasetCompressor:
                 **kwargs,
                 "h": self.bandwidth,
                 "batch_size": self.batch_size,
+                "device": self.device,
             }
 
         return compress_fn(self._descriptors, self._entropies, size, **kwargs)
@@ -188,6 +198,7 @@ class DatasetCompressor:
                 **kwargs,
                 "h": self.bandwidth,
                 "batch_size": self.batch_size,
+                "device": self.device,
             }
 
         return self.compress_chunk(
