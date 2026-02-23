@@ -163,6 +163,69 @@ def msc(
     return compressed
 
 
+def msc_gpu(
+    descriptors: "List[torch.Tensor]",
+    entropies: "torch.Tensor",
+    size: int,
+    h: float = DEFAULT_BANDWIDTH,
+    batch_size: int = DEFAULT_BATCH,
+    device: str = "cuda",
+) -> List[int]:
+    import torch
+
+    ksum = get_kernel_fn(device)
+    descriptors = [torch.tensor(x, device="cpu") for x in descriptors]
+
+    remaining = list(range(len(descriptors)))
+    next_i = entropies.argmax()
+    compressed = [next_i]
+    remaining.pop(next_i)
+    entropies_list = entropies.tolist()
+    entropies_list.pop(next_i)
+
+    # remaining_x = torch.cat([descriptors[i] for i in remaining]).to("cpu")
+    remaining_x = torch.cat([torch.atleast_1d(descriptors[i]) for i in remaining]).to(
+        "cpu"
+    )
+    remaining_kernels = torch.zeros(len(remaining_x), device="cpu")
+
+    size = min(size, len(descriptors))
+
+    while len(compressed) < size:
+        # last_x = descriptors[next_i].to("cpu")
+        last_x = torch.atleast_1d(descriptors[next_i]).to("cpu")
+
+        remaining_natoms = torch.tensor(
+            [len(descriptors[i]) for i in remaining], dtype=torch.long, device="cpu"
+        )
+        remaining_idx = torch.repeat_interleave(
+            torch.arange(len(remaining), device="cpu"), remaining_natoms
+        )
+
+        remaining_kernels += ksum(remaining_x, last_x, h=h, batch_size=batch_size)
+
+        # scatter_reduce to get per-structure min
+        n_remaining = len(remaining)
+        per_struct_kernels = torch.full((n_remaining,), float("inf"), device="cpu")
+        per_struct_kernels.scatter_reduce_(
+            0, remaining_idx.long(), remaining_kernels, reduce="amin"
+        )
+
+        per_struct_dH = -torch.log(per_struct_kernels)
+        entropies_t = torch.tensor(entropies_list, device="cpu")
+        selected = (per_struct_dH + entropies_t).argmax().item()
+
+        next_i = remaining.pop(selected)
+        entropies_list.pop(selected)
+
+        mask = remaining_idx != selected
+        remaining_x = remaining_x[mask]
+        remaining_kernels = remaining_kernels[mask]
+        compressed.append(next_i)
+
+    return compressed
+
+
 def msc_conditional(
     descriptors: List[np.ndarray],
     entropies: np.ndarray,
@@ -262,4 +325,5 @@ def msc_conditional(
                 remaining_x, last_x, h=h, batch_size=batch_size
             )
 
+    return compressed
     return compressed
