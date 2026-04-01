@@ -391,6 +391,5 @@ SPDX: BSD-3-Clause
 
 ## Acknowledgements
 
-This software package was initially produced under the auspices of the U.S. Department of Energy by Lawrence Livermore National Laboratory under Contract DE-AC52-07NA27344, with support from LLNL's LDRD program under tracking codes 22-ERD-055 and 23-SI-006.
-
-Code released as LLNL-CODE-858914
+This software package was initially produced under the auspices of the U.S. Department of Energy by Lawrence Livermore National Laboratory under Contract DE-AC52-07NA27344, with support from LLNL's LDRD program under tracking codes 22-ERD-055 and 23-SI-006 (Code released as LLNL-CODE-858914).
+Current development of this project is supported by the U.S. Department of Energy (DOE), Office of Science, Office of Basic Energy Sciences under Award Number DE-SC0025642.
