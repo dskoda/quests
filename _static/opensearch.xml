@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+  <ShortName>QUESTS</ShortName>
+  <Description>Search QUESTS 2024.06.21 documentation</Description>
+  <InputEncoding>utf-8</InputEncoding>
+  <Url type="text/html" method="get"
+       template="https://quests.readthedocs.io/search.html?q={searchTerms}"/>
+  <LongName>QUESTS 2024.06.21 documentation</LongName>
+  
+</OpenSearchDescription>
