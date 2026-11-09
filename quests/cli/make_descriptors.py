@@ -54,6 +54,13 @@ from .log import format_time, logger
     help="path to the file that will contain the output\
             (default: no output produced)",
 )
+@click.option(
+    "-f",
+    "--format",
+    type=str,
+    default=None,
+    help="format for the input file (default: auto-detect using ASE)",
+)
 def make_descriptors(
     file,
     cutoff,
@@ -61,12 +68,13 @@ def make_descriptors(
     reshape,
     jobs,
     output,
+    format,
 ):
     if jobs is not None:
         nb.set_num_threads(jobs)
 
     logger(f"Loading {file}")
-    dset = read(file, index=":")
+    dset = read(file, index=":", format=format)
 
     logger(f"Creating descriptors...")
     with Timer() as t:
